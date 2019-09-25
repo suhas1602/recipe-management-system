@@ -107,7 +107,67 @@ const getUserDetails = (req, res) => {
 		})
 }
 
+const updateUserDetails = (req, res) => {
+    const encodedToken = req.headers.authorization;
+
+	const decodedToken = Buffer.from(encodedToken, "base64").toString();
+
+	const email = decodedToken.slice(0, decodedToken.indexOf("|"));
+	const password = decodedToken.slice(decodedToken.indexOf("|") + 1, decodedToken.length);
+
+	const newFirstname = req.body.firstname;
+	const newLastname = req.body.lastname;
+	const newPassword = req.body.password;
+
+	db.getUserDetails(email)
+		.then(result => {
+			if(result.rows.length === 0) {
+				res.status(401).send("Unauthorized");
+			} else {
+				const details = result.rows[0];
+				bcrypt.compare(password, details.password)
+					.then(async hash => {
+						if(hash) {
+                           const hashedPassword = await bcrypt.hash(newPassword,saltRounds); 
+                           const now = new Date();
+                           const updateUserDetailsInput = {
+                           		email,
+                           		newFirstname,
+						    	newLastname,
+						    	newPassword: hashedPassword,
+						    	account_updated: now,
+                           };
+
+							db.updateUserDetails(updateUserDetailsInput).then(() =>{
+
+                                res.status(204).send({
+                                	email,
+                                	firstname: newFirstname,
+                                	lastname: newLastname,
+                                	account_updated : updateUserDetailsInput.account_updated,
+                                });
+
+							});
+
+						} else {
+							res.status(401).send("Unauthorized");
+						}
+					})
+					.catch(err => {
+						console.log(err);
+						res.status(401).send("Unauthorized");
+					});
+			}
+		})
+		.catch(err => {
+			console.log(err);
+			res.status(401).send("Unauthorized");
+		})
+
+}
+
 module.exports = {
 	createUser,
 	getUserDetails,
+	updateUserDetails
 };
