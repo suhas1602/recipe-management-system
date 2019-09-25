@@ -33,8 +33,22 @@ const getUserDetails = async (email) => {
   return res;
 }
 
+const updateUserDetails = async (updatdeUserDetailsInput) => {
+  const res = await pool.query("UPDATE public.user SET firstname = $2, lastname = $3, password = $4, account_updated = $5 WHERE email = $1",
+    [
+    updatdeUserDetailsInput.email,
+    updatdeUserDetailsInput.newFirstname,
+    updatdeUserDetailsInput.newLastname,
+    updatdeUserDetailsInput.newPassword,
+    updatdeUserDetailsInput.account_updated
+    ]);
+
+  return res;
+}
+
 module.exports = {
   getAllEmail,
   createUser,
   getUserDetails,
+  updateUserDetails
 }

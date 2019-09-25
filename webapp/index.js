@@ -19,6 +19,7 @@ app.use(
 // });
 app.post("/v1/user/", api.createUser);
 app.get("/v1/user/self", api.getUserDetails);
+app.put("/v1/user/self",api.updateUserDetails);
 
 app.listen(port, () => {
   console.log(`App running on port ${port}.`);
