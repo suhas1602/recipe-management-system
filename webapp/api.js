@@ -115,38 +115,39 @@ const updateUserDetails = (req, res) => {
 	const email = decodedToken.slice(0, decodedToken.indexOf("|"));
 	const password = decodedToken.slice(decodedToken.indexOf("|") + 1, decodedToken.length);
 
-	const newFirstname = req.body.firstname;
-	const newLastname = req.body.lastname;
-	const newPassword = req.body.password;
-
 	db.getUserDetails(email)
 		.then(result => {
 			if(result.rows.length === 0) {
 				res.status(401).send("Unauthorized");
 			} else {
 				const details = result.rows[0];
+
 				bcrypt.compare(password, details.password)
 					.then(async hash => {
 						if(hash) {
-                           const hashedPassword = await bcrypt.hash(newPassword,saltRounds); 
-                           const now = new Date();
-                           const updateUserDetailsInput = {
+                            
+						    const now = new Date();
+						   
+						    const newFirstname = req.body.firstname ? req.body.firstname : details.firstname;
+							const newLastname = req.body.lastname ? req.body.lastname : details.lastname;
+							
+							let hashedPassword;
+							if(req.body.password) {
+								hashedPassword = await bcrypt.hash(req.body.password, saltRounds);
+							}
+							const newPassword = req.body.password ? hashedPassword : details.password;
+
+
+                            const updateUserDetailsInput = {
                            		email,
                            		newFirstname,
 						    	newLastname,
-						    	newPassword: hashedPassword,
+						    	newPassword,
 						    	account_updated: now,
-                           };
+                           	};
 
-							db.updateUserDetails(updateUserDetailsInput).then(() =>{
-
-                                res.status(204).send({
-                                	email,
-                                	firstname: newFirstname,
-                                	lastname: newLastname,
-                                	account_updated : updateUserDetailsInput.account_updated,
-                                });
-
+							db.updateUserDetails(updateUserDetailsInput).then(() => {
+                                res.status(204).send();
 							});
 
 						} else {

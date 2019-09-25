@@ -71,8 +71,13 @@ describe.skip("Create user", function() {
     });
 });
 
-describe("Get User Details", function() {
-    describe.skip("User doesn't exist", function() {
+describe.skip("Get User Details", function() {
+    afterEach(function() {
+        db.getUserDetails.restore();
+    });
+
+
+    describe("User doesn't exist", function() {
         it("should return status 401 if user doesn't exist", (done) => {
             const getUserDetailsStub = sinon.stub(db, "getUserDetails").callsFake(() => Promise.resolve({ rows: [] }));
 
@@ -86,7 +91,7 @@ describe("Get User Details", function() {
         })
     })
 
-    describe.skip("Password doesn't match", function() {
+    describe("Password doesn't match", function() {
         it("should return status 401 if password doesn't match", (done) => {
             const getUserDetailsStub = sinon.stub(db, "getUserDetails").callsFake(() => Promise.resolve({ rows: [{
                 password: "$2b$10$ew1edJwd5VilolbtpjVsKOAb6dXhoOUg/37cpN778TB4gtFe2Xbhm"
@@ -130,4 +135,88 @@ describe("Get User Details", function() {
                 });
         });
     });
+});
+
+describe("Update user", function() {
+    afterEach(function() {
+        db.getUserDetails.restore();
+    });
+
+    describe("Authorization failure", function() {
+        it("should return status 401 if password is wrong", (done) => {
+            const getUserDetailsStub = sinon.stub(db, "getUserDetails").callsFake(() => Promise.resolve({ rows: [{
+                password: "$2b$10$ew1edJwd5VilolbtpjVsKOAb6dXhoOUg/37cpN778TB4gtFe2Xbhm"
+            }] }));
+
+            chai.request(app)
+                .put("/v1/user/self/")
+                .set("authorization", "am9obmRvZUBub3J0aGVhc3Rlcm4uY29tfFBhc3N3b3JkMTIz")
+                .send({
+                    "firstname": "Jane"
+                })
+                .end((err, res) => {
+                    res.should.have.status(401);
+                    done();
+                });
+        })
+    })
+
+    describe("Update firstname", function() {
+        after(function() {
+            db.updateUserDetails.restore();
+        })
+        it("should return status code 204", (done) => {
+            const getUserDetailsStub = sinon.stub(db, "getUserDetails").callsFake(() => Promise.resolve({ rows: [{
+                password: "$2b$10$ew1edJwd5VilolbtpjVsKOAb6dXhoOUg/37cpN778TB4gtFe2Xbhm",
+                id: "a6895698-dceb-4050-af53-6d8e39fcd946",
+                firstname: "John",
+                lastname: "Doe",
+                account_created: "2019-09-25T02:28:46.638Z",
+                account_updated: "2019-09-25T02:28:46.638Z",
+            }] }));
+
+            const updateUserDetailsStub = sinon.stub(db, "updateUserDetails").callsFake(() => Promise.resolve());
+
+            chai.request(app)
+                .put("/v1/user/self/")
+                .set("authorization", "am9obmRvZUBub3J0aGVhc3Rlcm4uY29tfFBhc3N3b3JkMTIzNA==")
+                .send({
+                    "firstname": "Jane"
+                })
+                .end((err, res) => {
+                    res.should.have.status(204);
+                    done();
+                });
+        });
+    });
+
+    describe("Update password", function() {
+        after(function() {
+            db.updateUserDetails.restore();
+        })
+        it("should return status code 204", (done) => {
+            const getUserDetailsStub = sinon.stub(db, "getUserDetails").callsFake(() => Promise.resolve({ rows: [{
+                password: "$2b$10$ew1edJwd5VilolbtpjVsKOAb6dXhoOUg/37cpN778TB4gtFe2Xbhm",
+                id: "a6895698-dceb-4050-af53-6d8e39fcd946",
+                firstname: "John",
+                lastname: "Doe",
+                account_created: "2019-09-25T02:28:46.638Z",
+                account_updated: "2019-09-25T02:28:46.638Z",
+            }] }));
+
+            const updateUserDetailsStub = sinon.stub(db, "updateUserDetails").callsFake(() => Promise.resolve());
+
+            chai.request(app)
+                .put("/v1/user/self/")
+                .set("authorization", "am9obmRvZUBub3J0aGVhc3Rlcm4uY29tfFBhc3N3b3JkMTIzNA==")
+                .send({
+                    "password": "Password1234!"
+                })
+                .end((err, res) => {
+                    res.should.have.status(204);
+                    done();
+                });
+        });
+    });
 })
+
