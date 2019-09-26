@@ -1,0 +1,33 @@
+{
+  "name": "ccwebapp",
+  "version": "1.0.0",
+  "description": "## Team Information",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/suhas1602/ccwebapp.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/suhas1602/ccwebapp/issues"
+  },
+  "homepage": "https://github.com/suhas1602/ccwebapp#readme",
+  "dependencies": {
+    "bcrypt": "^3.0.6",
+    "dotenv": "^8.1.0",
+    "express": "^4.17.1",
+    "mocha": "^6.2.0",
+    "pg": "^7.12.1",
+    "uuid": "^3.3.3"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "chai-http": "^4.3.0",
+    "sinon": "^7.5.0"
+  }
+}
