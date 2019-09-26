@@ -11,7 +11,7 @@ const expect = chai.expect;
 chai.use(chaiHttp);
 chai.should();
 
-describe.skip("Create user", function() {
+describe("Create user", function() {
     describe("Password does not meet criteria", function() {
         it("should return status 400 if password does not meet standards", (done) => {
             chai.request(app)
@@ -71,7 +71,7 @@ describe.skip("Create user", function() {
     });
 });
 
-describe.skip("Get User Details", function() {
+describe("Get User Details", function() {
     afterEach(function() {
         db.getUserDetails.restore();
     });

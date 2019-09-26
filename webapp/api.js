@@ -16,11 +16,18 @@ const checkPassword = (password) => {
 	return true;	  
 }
 
+const checkEmail = (email) =>  (/[a-zA-Z0-9_\.\+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-\.]+/.test(email));
+    
+
 const createUser = (request, response) => {
 	const email = request.body.email;
 	const firstname = request.body.firstname;
 	const lastname = request.body.lastname;
 	const password = request.body.password;
+
+	if(!checkEmail(email)){
+		response.status(400).send("Email does not meet criteria");
+	 } else{
 
 	if(!checkPassword(password)) {
 		response.status(400).send("Password does not meet criteria");
@@ -64,6 +71,8 @@ const createUser = (request, response) => {
 			response.status(400).send("Error");
 		});
 	}
+   }
+  
 }
 
 const getUserDetails = (req, res) => {
