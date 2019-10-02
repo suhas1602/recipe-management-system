@@ -1,5 +1,7 @@
 const uuid = require("uuid");
 const bcrypt = require("bcrypt");
+const Joi = require('joi');
+const lodash = require('lodash');
 const saltRounds = 10;
 
 const db = require("./db");
@@ -17,6 +19,32 @@ const checkPassword = (password) => {
 }
 
 const checkEmail = (email) =>  (/[a-zA-Z0-9_\.\+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-\.]+/.test(email));
+
+const authorizeMiddleware = async (req, res, next) => {
+	const auth = req.get('Authorization');
+	const token = auth.split(' ')[1];
+  
+	const credentials = Buffer.from(token, 'base64').toString().split(':');
+	const email = credentials[0];
+	const password = credentials[1];
+  
+	if(!password || !email) return res.sendStatus(401);
+  
+	 const {rows: emails} = await db.getAllEmail();
+  
+	 if(!emails.map(e => e.email).includes(email))  return res.sendStatus(401);
+  
+	 const {rows: users} = await db.getUserDetails(email);
+	 const result = await bcrypt.compare(password, users[0].password);
+  
+	 if(result) {
+		 res.locals.email = email;
+	 } else {
+		 return res.sendStatus(401);
+	 }
+  
+	 next();
+  }
     
 
 const createUser = (request, response) => {
@@ -75,109 +103,149 @@ const createUser = (request, response) => {
   
 }
 
-const getUserDetails = (req, res) => {
-	const encodedToken = req.headers.authorization;
+const getUserDetails = async (req, res) => {
+	const email = res.locals.email;
 
-	const decodedToken = Buffer.from(encodedToken, "base64").toString();
+	const {rows: [user]} = await db.getUserDetails(email);
 
-	const email = decodedToken.slice(0, decodedToken.indexOf("|"));
-	const password = decodedToken.slice(decodedToken.indexOf("|") + 1, decodedToken.length);	
-	
-	db.getUserDetails(email)
-		.then(result => {
-			if(result.rows.length === 0) {
-				res.status(401).send("Unauthorized");
-			} else {
-				const details = result.rows[0];
-				bcrypt.compare(password, details.password)
-					.then(hash => {
-						if(hash) {
-							res.status(200).send({
-								id: details.id,
-								email,
-								firstname: details.firstname,
-								lastname: details.lastname,
-								account_created: details.account_created,
-								account_updated: details.account_updated,	
-							});	
-						} else {
-							res.status(401).send("Unauthorized");
-						}
-					})
-					.catch(err => {
-						console.log(err);
-						res.status(401).send("Unauthorized");
-					});
-			}
-		})
-		.catch(err => {
-			console.log(err);
-			res.status(401).send("Unauthorized");
-		})
+	res.status(200).send({
+		email: user.email,
+		firstname: user.firstname,
+		lastname: user.lastname,
+		account_created: user.account_created,
+		account_updated: user.account_updated,
+	});
 }
 
-const updateUserDetails = (req, res) => {
-    const encodedToken = req.headers.authorization;
+const updateUserDetails = async (req, res) => {
+	const email = res.locals.email;
 
-	const decodedToken = Buffer.from(encodedToken, "base64").toString();
+	const schema = {
+		email: Joi.string().forbidden(),
+		firstname: Joi.string().optional(),
+		lastname: Joi.string().optional(),
+		password: Joi.string().regex(/^[a-zA-Z0-9]{8,30}$/).optional(),
+		account_created: Joi.date().forbidden(),
+		account_updated: Joi.date().forbidden(),
+	};
 
-	const email = decodedToken.slice(0, decodedToken.indexOf("|"));
-	const password = decodedToken.slice(decodedToken.indexOf("|") + 1, decodedToken.length);
+	const validationResult = Joi.validate(req.body, schema);
 
-	db.getUserDetails(email)
-		.then(result => {
-			if(result.rows.length === 0) {
-				res.status(401).send("Unauthorized");
-			} else {
-				const details = result.rows[0];
 
-				bcrypt.compare(password, details.password)
-					.then(async hash => {
-						if(hash) {
+	if(validationResult.error || lodash.isEmpty(req.body)) return res.sendStatus(400);
+
+	const {rows: [details]} = await db.getUserDetails(email);
+	console.log(details);
                             
-						    const now = new Date();
-						   
-						    const newFirstname = req.body.firstname ? req.body.firstname : details.firstname;
-							const newLastname = req.body.lastname ? req.body.lastname : details.lastname;
-							
-							let hashedPassword;
-							if(req.body.password) {
-								hashedPassword = await bcrypt.hash(req.body.password, saltRounds);
-							}
-							const newPassword = req.body.password ? hashedPassword : details.password;
+	const now = new Date();
+	
+	const newFirstname = req.body.firstname ? req.body.firstname : details.firstname;
+	const newLastname = req.body.lastname ? req.body.lastname : details.lastname;
+	
+	let hashedPassword;
+	if(req.body.password) {
+		hashedPassword = await bcrypt.hash(req.body.password, saltRounds);
+	}
+	const newPassword = req.body.password ? hashedPassword : details.password;
+    const updateUserDetailsInput = {
+    	email,
+    	newFirstname,
+		newLastname,
+		newPassword,
+		account_updated: now,
+	}
+    
+	db.updateUserDetails(updateUserDetailsInput).then(() => {
+        res.status(204).send();
+	});
 
+}
 
-                            const updateUserDetailsInput = {
-                           		email,
-                           		newFirstname,
-						    	newLastname,
-						    	newPassword,
-						    	account_updated: now,
-                           	};
+const createRecipe = async (req, res) => {
+	const email = res.locals.email;
 
-							db.updateUserDetails(updateUserDetailsInput).then(() => {
-                                res.status(204).send();
-							});
+	const stepsSchema = Joi.object().keys({
+		position: Joi.number().min(1).required(),
+		items: Joi.string().required(),
+	})
 
-						} else {
-							res.status(401).send("Unauthorized");
-						}
-					})
-					.catch(err => {
-						console.log(err);
-						res.status(401).send("Unauthorized");
-					});
-			}
-		})
-		.catch(err => {
-			console.log(err);
-			res.status(401).send("Unauthorized");
-		})
+	const nutritionSchema = Joi.object().keys({
+		calories: Joi.number().integer().required(),
+		cholestrol_in_mg: Joi.number().required(),
+		sodium_in_mg: Joi.number().integer().required(),
+		carbohydrates_in_grams: Joi.number().required(),
+		protein_in_grams: Joi.number().required(),
+	}).required();
 
+	const schema = {
+		cook_time_in_min: Joi.number().multiple(5).required(),
+		prep_time_in_min: Joi.number().multiple(5).required(),
+		title: Joi.string().required(),
+		cusine: Joi.string().required(),
+		servings: Joi.number().min(1).max(5).required(),
+		ingredients: Joi.array().required(),
+		steps: Joi.array().items(stepsSchema).required(),
+		nutrition_information: nutritionSchema,
+	};
+
+	const { error } = Joi.validate(req.body, schema);
+
+	if(error) return res.status(400).send(error.details[0].message);
+
+	try{
+		const {rows: [user]} = await db.getUserDetails(email);
+		const now = new Date();
+	
+		const recipeInput = {
+			id: uuid(),
+			created_ts: now,
+			updated_ts: now,
+			author_id: user.id,
+			cook_time_in_min: req.body.cook_time_in_min,
+			prep_time_in_min: req.body.prep_time_in_min,
+			total_time_in_min: req.body.cook_time_in_min + req.body.prep_time_in_min,
+			title: req.body.title,
+			cusine: req.body.cusine,
+			servings: req.body.servings,
+			ingredients: req.body.ingredients,
+		};
+
+	  	await db.createRecipe(recipeInput);
+
+		for(const step of req.body.steps) {
+			const stepInput = {
+				id: uuid(),
+				position: step.position,
+				items: step.items,
+				recipe_id: recipeInput.id,
+			};
+
+			await db.createRecipeStep(stepInput);
+		}
+
+		const nutritionInput = {
+			id: uuid(),
+			...req.body.nutrition_information,
+			recipeId: recipeInput.id,
+		};
+
+		await db.createRecipeNutritionInformation(nutritionInput);
+	
+		res.status(201).send({
+			...recipeInput,
+			steps: req.body.steps,
+			nutrition_information: req.body.nutrition_information,
+		});
+	} catch(err) {
+		console.log(err);
+		res.sendStatus(500);
+	}
 }
 
 module.exports = {
 	createUser,
 	getUserDetails,
-	updateUserDetails
+	updateUserDetails,
+	createRecipe,
+	authorizeMiddleware,
 };
