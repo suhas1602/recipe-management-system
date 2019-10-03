@@ -119,6 +119,14 @@ const getRecipeNutritionInformation = async (id) => {
   return res;
 }
 
+const deleteRecipe = async (id) => {
+  await pool.query("DELETE FROM public.nutrition_information WHERE recipe_id=$1", [id]);
+
+  await pool.query("DELETE FROM public.steps WHERE recipe_id=$1", [id]);
+
+  return await pool.query("DELETE FROM public.recipe WHERE id=$1", [id]);
+}
+
 // const updateRecipe = async(updateRecipeInput) => {
 //   const res = await pool.query("UPDATE public.recipe SET id=$1, created_ts=$2, updated_ts=$3, author_id=$4, cook_time_in_min=$5, prep_time_in_min=$6, total_time_in_min=$7, title=$8, cusine=$9, servings=$10, ingredients=$11" +
 //     "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",[
@@ -186,6 +194,7 @@ module.exports = {
   getRecipeDetails,
   getRecipeSteps,
   getRecipeNutritionInformation,
+  deleteRecipe,
   // updateRecipe,
   // updateRecipeStep,
   // updateRecipeNutritionInformation

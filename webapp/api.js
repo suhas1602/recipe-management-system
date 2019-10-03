@@ -22,6 +22,9 @@ const checkEmail = (email) =>  (/[a-zA-Z0-9_\.\+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-\.
 
 const authorizeMiddleware = async (req, res, next) => {
 	const auth = req.get('Authorization');
+
+	if(lodash.isEmpty(auth)) return res.sendStatus(401);
+	
 	const token = auth.split(' ')[1];
   
 	const credentials = Buffer.from(token, 'base64').toString().split(':');
@@ -360,13 +363,31 @@ const getRecipeDetails = async (req, res) => {
 
 // }
 
+const deleteRecipe = async (req, res) => {
+	const email = res.locals.email;
+	const recipeId = req.params.id;
+
+	const {rows: [user]} = await db.getUserDetails(email);
+
+	const {rows: recipeDetails} = await db.getRecipeDetails(recipeId);
+
+	if(lodash.isEmpty(recipeDetails)) return res.sendStatus(404);
+
+	if(user.id !== recipeDetails[0].author_id) return res.sendStatus(401);
+
+	await db.deleteRecipe(recipeId);
+
+	res.sendStatus(204);
+}
+
 module.exports = {
+	authorizeMiddleware,
 	createUser,
 	getUserDetails,
 	updateUserDetails,
 	createRecipe,
-	authorizeMiddleware,
-	getRecipeDetails
+	getRecipeDetails,
+	deleteRecipe,
 	// updateRecipe,
 	// updateRecipeStep,
 	// updateRecipeNutritionInformation
