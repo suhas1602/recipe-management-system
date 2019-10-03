@@ -242,10 +242,132 @@ const createRecipe = async (req, res) => {
 	}
 }
 
+
+
+const getRecipeDetails = async (req, res) => {
+	const id = req.params.id;
+
+    const {rows: [recipe]} = await db.getRecipeDetails(id);
+    const {rows: recipeSteps} = await db.getRecipeSteps(id);
+    const {rows: recipeNutritionInformaiton} = await db.getRecipeNutritionInformation(id);
+
+    res.status(200).send({
+		    id: recipe.id,
+			created_ts: recipe.created_ts,
+			updated_ts: recipe.updated_ts,
+			author_id: recipe.author_id,
+			cook_time_in_min: recipe.cook_time_in_min,
+			prep_time_in_min: recipe.prep_time_in_min,
+			total_time_in_min: recipe.total_time_in_min,
+			title: recipe.title,
+			cusine: recipe.cusine,
+			servings: recipe.servings,
+			ingredients: recipe.ingredients,
+			steps: recipeSteps.map(item => ({
+				position: item.position,
+				items: item.items
+			})),
+			nutrition_information: recipeNutritionInformaiton.map(item =>({
+				calories: item.calories,
+				cholestrol_in_mg: item.cholestrol_in_mg,
+				sodium_in_mg: item.sodium_in_mg,
+				carbohydrates_in_grams: item.carbohydrates_in_grams,
+				protein_in_grams: item.protein_in_grams
+			}))
+	});
+}
+
+// const updateRecipe = async (req, res) => {
+
+// 	const email = res.locals.email;
+
+// 	const stepsSchema = Joi.object().keys({
+// 		position: Joi.number().min(1).required(),
+// 		items: Joi.string().required(),
+// 	})
+
+// 	const nutritionSchema = Joi.object().keys({
+// 		calories: Joi.number().integer().required(),
+// 		cholestrol_in_mg: Joi.number().required(),
+// 		sodium_in_mg: Joi.number().integer().required(),
+// 		carbohydrates_in_grams: Joi.number().required(),
+// 		protein_in_grams: Joi.number().required(),
+// 	}).required();
+
+// 	const schema = {
+// 		cook_time_in_min: Joi.number().multiple(5).required(),
+// 		prep_time_in_min: Joi.number().multiple(5).required(),
+// 		title: Joi.string().required(),
+// 		cusine: Joi.string().required(),
+// 		servings: Joi.number().min(1).max(5).required(),
+// 		ingredients: Joi.array().required(),
+// 		steps: Joi.array().items(stepsSchema).required(),
+// 		nutrition_information: nutritionSchema,
+// 	};
+
+// 	const { error } = Joi.validate(req.body, schema);
+
+// 	if(error) return res.status(400).send(error.details[0].message);
+
+// 	try{
+// 		const {rows: [recipe]} = await db.getRecipeDetails(id);
+// 		const now = new Date();
+	
+// 		const updateRecipeInput = {
+// 			id: recipe.id,
+// 			created_ts: recipe.created_ts,
+// 			updated_ts: now,
+// 			author_id: recipe.author_id,
+// 			cook_time_in_min: req.body.cook_time_in_min,
+// 			prep_time_in_min: req.body.prep_time_in_min,
+// 			total_time_in_min: req.body.cook_time_in_min + req.body.prep_time_in_min,
+// 			title: req.body.title,
+// 			cusine: req.body.cusine,
+// 			servings: req.body.servings,
+// 			ingredients: req.body.ingredients,
+// 		};
+
+// 	  	await db.updateRecipe(updateRecipeInput);
+
+// 		for(const step of req.body.steps) {
+// 			const stepInput = {
+// 				id: recipe.id,
+// 				position: step.position,
+// 				items: step.items,
+// 				recipe_id: recipeInput.id,
+// 			};
+
+// 			await db.updateRecipeStep(stepInput);
+// 		}
+
+// 		const nutritionInput = {
+// 			id: recipe.id,
+// 			...req.body.nutrition_information,
+// 			recipeId: recipeInput.id,
+// 		};
+
+// 		await db.updateRecipeNutritionInformation(nutritionInput);
+	
+// 		res.status(201).send({
+// 			...recipeInput,
+// 			steps: req.body.steps,
+// 			nutrition_information: req.body.nutrition_information,
+// 		});
+// 	} catch(err) {
+// 		console.log(err);
+// 		res.sendStatus(500);
+// 	}
+
+// }
+
 module.exports = {
 	createUser,
 	getUserDetails,
 	updateUserDetails,
 	createRecipe,
 	authorizeMiddleware,
+	getRecipeDetails
+	// updateRecipe,
+	// updateRecipeStep,
+	// updateRecipeNutritionInformation
 };

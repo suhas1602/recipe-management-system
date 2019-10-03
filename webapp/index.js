@@ -17,7 +17,7 @@ const unless = function(routes, middleware) {
   };
 };
 
-app.use(unless([{path: '/v1/user', method: 'POST'}], api.authorizeMiddleware));
+app.use(unless([{path: '/v1/user', method: 'POST'}, {path: '/v1/recipe', method: 'GET'}], api.authorizeMiddleware));
 
 app.use(bodyParser.json());
 app.use(
@@ -34,6 +34,8 @@ app.get("/v1/user/self", api.getUserDetails);
 app.put("/v1/user/self",api.updateUserDetails);
 
 app.post("/v1/recipe", api.createRecipe);
+app.get("/v1/recipe/:id", api.getRecipeDetails);
+// app.put("/v1/recipe/:id", api.updateRecipe);
 
 app.listen(port, () => {
   console.log(`App running on port ${port}.`);
