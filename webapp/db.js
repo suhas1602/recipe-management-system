@@ -46,9 +46,140 @@ const updateUserDetails = async (updatdeUserDetailsInput) => {
   return res;
 }
 
+const createRecipe = async (recipeInput) => {
+  try {
+    const res = await pool.query("INSERT INTO public.recipe (id, created_ts, updated_ts, author_id, cook_time_in_min, prep_time_in_min, total_time_in_min, title, cusine, servings, ingredients)" +
+    "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",[
+      recipeInput.id,
+      recipeInput.created_ts,
+      recipeInput.updated_ts,
+      recipeInput.author_id,
+      recipeInput.cook_time_in_min,
+      recipeInput.prep_time_in_min,
+      recipeInput.total_time_in_min,
+      recipeInput.title,
+      recipeInput.cusine,
+      recipeInput.servings,
+      recipeInput.ingredients
+    ]);
+
+    return res;
+  } catch(err) {
+    console.log(err);
+    throw err;
+  }
+};
+
+const createRecipeStep = async (stepInput) => {
+  try{
+    return await pool.query("INSERT INTO public.steps (id, position, items, recipe_id) VALUES ($1,$2,$3,$4)", [
+      stepInput.id,
+      stepInput.position,
+      stepInput.items,
+      stepInput.recipe_id,
+    ]);
+  } catch(err) {
+    console.log(err);
+  }
+}
+
+const createRecipeNutritionInformation = async (nutritionInput) => {
+  try{
+    return await pool.query("INSERT INTO public.nutrition_information (id, calories, cholestrol_in_mg, sodium_in_mg, carbohydrates_in_grams, protein_in_grams, recipe_id) VALUES ($1,$2,$3,$4,$5,$6,$7)", [
+      nutritionInput.id,
+      nutritionInput.calories,
+      nutritionInput.cholestrol_in_mg,
+      nutritionInput.sodium_in_mg,
+      nutritionInput.carbohydrates_in_grams,
+      nutritionInput.protein_in_grams,
+      nutritionInput.recipeId
+    ]);
+  } catch (err) {
+    console.log(err)
+    throw err;
+  }
+}
+
+const getRecipeDetails = async (id) => {
+  const res = await pool.query("SELECT * FROM public.recipe WHERE id=$1", [id]);
+
+  return res;
+}
+
+const getRecipeSteps = async (id) => {
+  const res = await pool.query("SELECT * FROM public.steps WHERE recipe_id=$1",[id]);
+
+  return res;
+
+}
+
+const getRecipeNutritionInformation = async (id) => {
+  const res = await pool.query("SELECT * FROM public.nutrition_information WHERE recipe_id=$1",[id]);
+
+  return res;
+}
+
+const deleteRecipe = async (id) => {
+  await pool.query("DELETE FROM public.nutrition_information WHERE recipe_id=$1", [id]);
+
+  await pool.query("DELETE FROM public.steps WHERE recipe_id=$1", [id]);
+
+  return await pool.query("DELETE FROM public.recipe WHERE id=$1", [id]);
+}
+
+const updateRecipe = async(updateRecipeInput, recipeId) => {
+
+  const res = await pool.query("UPDATE public.recipe SET  created_ts=$1, updated_ts=$2, author_id=$3, cook_time_in_min=$4, prep_time_in_min=$5, total_time_in_min=$6, title=$7, cusine=$8, servings=$9, ingredients=$10 WHERE id=$11" ,
+    [
+      updateRecipeInput.created_ts,
+      updateRecipeInput.updated_ts,
+      updateRecipeInput.author_id,
+      updateRecipeInput.cook_time_in_min,
+      updateRecipeInput.prep_time_in_min,
+      updateRecipeInput.total_time_in_min,
+      updateRecipeInput.title,
+      updateRecipeInput.cusine,
+      updateRecipeInput.servings,
+      updateRecipeInput.ingredients,
+      recipeId
+    ]);
+
+    return res;
+
+}
+
+const deleteRecipeOldSteps = async(id) => {
+  return await pool.query("DELETE FROM public.steps WHERE recipe_id = $1", [id]);
+}
+
+const updateRecipeNutritionInformation = async(newNutrition_information, recipeId) => {
+    const res = await pool.query("UPDATE public.nutrition_information SET calories=$1, cholestrol_in_mg=$2, sodium_in_mg=$3, carbohydrates_in_grams=$4, protein_in_grams=$5 WHERE recipe_id=$6", 
+      [
+      newNutrition_information.calories,
+      newNutrition_information.cholestrol_in_mg,
+      newNutrition_information.sodium_in_mg,
+      newNutrition_information.carbohydrates_in_grams,
+      newNutrition_information.protein_in_grams,
+      recipeId
+    ]);
+  return res;
+}
+
+
+
 module.exports = {
   getAllEmail,
   createUser,
   getUserDetails,
-  updateUserDetails
+  updateUserDetails,
+  createRecipe,
+  createRecipeStep,
+  createRecipeNutritionInformation,
+  getRecipeDetails,
+  getRecipeSteps,
+  getRecipeNutritionInformation,
+  deleteRecipe,
+  updateRecipe,
+  deleteRecipeOldSteps,
+  updateRecipeNutritionInformation
 }
