@@ -26,11 +26,12 @@ const authorizeMiddleware = async (req, res, next) => {
 	if(lodash.isEmpty(auth)) return res.sendStatus(401);
 	
 	const token = auth.split(' ')[1];
-  
+
 	const credentials = Buffer.from(token, 'base64').toString().split(':');
+
 	const email = credentials[0];
 	const password = credentials[1];
-  
+
 	if(!password || !email) return res.sendStatus(401);
   
 	 const {rows: emails} = await db.getAllEmail();
@@ -112,6 +113,7 @@ const getUserDetails = async (req, res) => {
 	const {rows: [user]} = await db.getUserDetails(email);
 
 	res.status(200).send({
+		id: user.id,
 		email: user.email,
 		firstname: user.firstname,
 		lastname: user.lastname,
@@ -138,7 +140,6 @@ const updateUserDetails = async (req, res) => {
 	if(validationResult.error || lodash.isEmpty(req.body)) return res.sendStatus(400);
 
 	const {rows: [details]} = await db.getUserDetails(email);
-	console.log(details);
                             
 	const now = new Date();
 	

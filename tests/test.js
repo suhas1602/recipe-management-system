@@ -72,46 +72,51 @@ describe("Create user", function() {
 });
 
 describe("Get User Details", function() {
-    afterEach(function() {
-        db.getUserDetails.restore();
-    });
-
 
     describe("User doesn't exist", function() {
         it("should return status 401 if user doesn't exist", (done) => {
-            const getUserDetailsStub = sinon.stub(db, "getUserDetails").callsFake(() => Promise.resolve({ rows: [] }));
+            const getAllEmailStub = sinon.stub(db, "getAllEmail").callsFake(() => Promise.resolve({ rows: [] }));
 
             chai.request(app)
                 .get("/v1/user/self/")
-                .set("authorization", "am9obmRvZUBub3J0aGVhc3Rlcm4uY29tfFBhc3N3b3JkMTIzNA==")
+                .set("Authorization", "Basic am9obmRvZUBleGFtcGxlLmNvbTpQYXNzd29yZDEyMzQ=")
                 .end((err, res) => {
                     res.should.have.status(401);
                     done();
                 })
+        })
+
+        after(function() {
+            db.getAllEmail.restore();
         })
     })
 
     describe("Password doesn't match", function() {
         it("should return status 401 if password doesn't match", (done) => {
             const getUserDetailsStub = sinon.stub(db, "getUserDetails").callsFake(() => Promise.resolve({ rows: [{
-                password: "$2b$10$ew1edJwd5VilolbtpjVsKOAb6dXhoOUg/37cpN778TB4gtFe2Xbhm"
+                password: "$2b$10$VCKdOXikH2ZAD8Q7GxaroeaBKte.5s.bzma1IgvMve6jAr6YBPRV8"
             }] }));
 
             chai.request(app)
                 .get("/v1/user/self/")
-                .set("authorization", "am9obmRvZUBub3J0aGVhc3Rlcm4uY29tfFBhc3N3b3JkMTIz")
+                .set("authorization", "Basic am9obmRvZUBleGFtcGxlLmNvbTpQYXNzd29yZDEyMzQ=")
                 .end((err, res) => {
                     res.should.have.status(401);
                     done();
                 });
         });
+
+        after(function() {
+            db.getUserDetails.restore();
+        })
     });
 
     describe("Authorized successfully", function() {
         it("should return user details", (done) => {
             const getUserDetailsStub = sinon.stub(db, "getUserDetails").callsFake(() => Promise.resolve({ rows: [{
-                password: "$2b$10$ew1edJwd5VilolbtpjVsKOAb6dXhoOUg/37cpN778TB4gtFe2Xbhm",
+                password: "$2b$10$VCKdOXikH2ZAD8Q7GxaroeaBKte.5s.bzma1IgvMve6jAr6YBPRV6",
                 id: "a6895698-dceb-4050-af53-6d8e39fcd946",
+                email: "johndoe@example.com",
                 firstname: "John",
                 lastname: "Doe",
                 account_created: "2019-09-25T02:28:46.638Z",
@@ -120,12 +125,12 @@ describe("Get User Details", function() {
 
             chai.request(app)
                 .get("/v1/user/self/")
-                .set("authorization", "am9obmRvZUBub3J0aGVhc3Rlcm4uY29tfFBhc3N3b3JkMTIzNA==")
+                .set("authorization", "Basic am9obmRvZUBleGFtcGxlLmNvbTpQYXNzd29yZDEyMzQ=")
                 .end((err, res) => {
                     res.should.have.status(200);
                     res.body.should.be.deep.equal({
                         id: "a6895698-dceb-4050-af53-6d8e39fcd946",
-                        email: "johndoe@northeastern.com",
+                        email: "johndoe@example.com",
                         firstname: "John",
                         lastname: "Doe",
                         account_created: "2019-09-25T02:28:46.638Z",
@@ -134,6 +139,10 @@ describe("Get User Details", function() {
                     done();
                 });
         });
+
+        after(function() {
+            db.getUserDetails.restore();
+        })
     });
 });
 
@@ -145,12 +154,12 @@ describe("Update user", function() {
     describe("Authorization failure", function() {
         it("should return status 401 if password is wrong", (done) => {
             const getUserDetailsStub = sinon.stub(db, "getUserDetails").callsFake(() => Promise.resolve({ rows: [{
-                password: "$2b$10$ew1edJwd5VilolbtpjVsKOAb6dXhoOUg/37cpN778TB4gtFe2Xbhm"
+                password: "$2b$10$ew1edJwd5VilolbtpjVsKOAb6dXhoOUg/37cpN778TB4gtFe2Xbs7"
             }] }));
 
             chai.request(app)
                 .put("/v1/user/self/")
-                .set("authorization", "am9obmRvZUBub3J0aGVhc3Rlcm4uY29tfFBhc3N3b3JkMTIz")
+                .set("authorization", "Basic am9obmRvZUBleGFtcGxlLmNvbTpQYXNzd29yZDEyMzQ=")
                 .send({
                     "firstname": "Jane"
                 })
@@ -179,7 +188,7 @@ describe("Update user", function() {
 
             chai.request(app)
                 .put("/v1/user/self/")
-                .set("authorization", "am9obmRvZUBub3J0aGVhc3Rlcm4uY29tfFBhc3N3b3JkMTIzNA==")
+                .set("authorization", "Basic am9obmRvZUBleGFtcGxlLmNvbTpQYXNzd29yZDEyMzQ=")
                 .send({
                     "firstname": "Jane"
                 })
@@ -208,9 +217,9 @@ describe("Update user", function() {
 
             chai.request(app)
                 .put("/v1/user/self/")
-                .set("authorization", "am9obmRvZUBub3J0aGVhc3Rlcm4uY29tfFBhc3N3b3JkMTIzNA==")
+                .set("authorization", "Basic am9obmRvZUBleGFtcGxlLmNvbTpQYXNzd29yZDEyMzQ=")
                 .send({
-                    "password": "Password1234!"
+                    "password": "Passcode1234"
                 })
                 .end((err, res) => {
                     res.should.have.status(204);
