@@ -119,59 +119,49 @@ const getRecipeNutritionInformation = async (id) => {
   return res;
 }
 
-// const updateRecipe = async(updateRecipeInput) => {
-//   const res = await pool.query("UPDATE public.recipe SET id=$1, created_ts=$2, updated_ts=$3, author_id=$4, cook_time_in_min=$5, prep_time_in_min=$6, total_time_in_min=$7, title=$8, cusine=$9, servings=$10, ingredients=$11" +
-//     "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",[
-//       updateRecipeInput.id,
-//       updateRecipeInput.created_ts,
-//       updateRecipeInput.updated_ts,
-//       updateRecipeInput.author_id,
-//       updateRecipeInput.cook_time_in_min,
-//       updateRecipeInput.prep_time_in_min,
-//       updateRecipeInput.total_time_in_min,
-//       updateRecipeInput.title,
-//       updateRecipeInput.cusine,
-//       updateRecipeInput.servings,
-//       updateRecipeInput.ingredients
-//     ]);
+const updateRecipe = async(updateRecipeInput) => {
 
-//     return res;
+  const res = await pool.query("UPDATE public.recipe SET  created_ts=$1, updated_ts=$2, author_id=$3, cook_time_in_min=$4, prep_time_in_min=$5, total_time_in_min=$6, title=$7, cusine=$8, servings=$9, ingredients=$10" ,
+    [
+      updateRecipeInput.created_ts,
+      updateRecipeInput.updated_ts,
+      updateRecipeInput.author_id,
+      updateRecipeInput.cook_time_in_min,
+      updateRecipeInput.prep_time_in_min,
+      updateRecipeInput.total_time_in_min,
+      updateRecipeInput.title,
+      updateRecipeInput.cusine,
+      updateRecipeInput.servings,
+      updateRecipeInput.ingredients
+    ]);
 
-// }
+    return res;
 
-// const updateRecipeStep = async(stepInput) => {
-//   try{
-//     return await pool.query("UPDATE public.steps SET id=$1, position=$2, items=$3, recipe_id=$4" + "VALUES ($1,$2,$3,$4)", [
-//       stepInput.id,
-//       stepInput.position,
-//       stepInput.items,
-//       stepInput.recipe_id,
-//     ]);
+}
 
-//     return res;
+const updateRecipeStep = async(stepInput) => {
+  
+  const res = await pool.query("UPDATE public.steps SET position=$1, items=$2", 
+      [
+      stepInput.position,
+      stepInput.items
+    ]);
 
-//   } catch(err) {
-//     console.log(err);
-//   }
-// }
+    return res;
+}
 
 
-// const updateRecipeNutritionInformation = async(nutritionInput) => {
-//    try{
-//     return await pool.query("UPDATE public.nutrition_information SET id=$1, calories=$2, cholestrol_in_mg=$3, sodium_in_mg=$4, carbohydrates_in_grams=$5, protein_in_grams=$6, recipe_id=$7" + "VALUES ($1,$2,$3,$4,$5,$6,$7)", [
-//       nutritionInput.id,
-//       nutritionInput.calories,
-//       nutritionInput.cholestrol_in_mg,
-//       nutritionInput.sodium_in_mg,
-//       nutritionInput.carbohydrates_in_grams,
-//       nutritionInput.protein_in_grams,
-//       nutritionInput.recipeId
-//     ]);
-//   } catch (err) {
-//     console.log(err)
-//     throw err;
-//   }
-// }
+const updateRecipeNutritionInformation = async(newNutrition_information) => {
+    const res = await pool.query("UPDATE public.nutrition_information SET calories=$1, cholestrol_in_mg=$2, sodium_in_mg=$3, carbohydrates_in_grams=$4, protein_in_grams=$5", 
+      [
+      newNutrition_information.calories,
+      newNutrition_information.cholestrol_in_mg,
+      newNutrition_information.sodium_in_mg,
+      newNutrition_information.carbohydrates_in_grams,
+      newNutrition_information.protein_in_grams
+    ]);
+  return res;
+}
 
 
 
@@ -186,7 +176,7 @@ module.exports = {
   getRecipeDetails,
   getRecipeSteps,
   getRecipeNutritionInformation,
-  // updateRecipe,
-  // updateRecipeStep,
-  // updateRecipeNutritionInformation
+  updateRecipe,
+  updateRecipeStep,
+  updateRecipeNutritionInformation
 }
