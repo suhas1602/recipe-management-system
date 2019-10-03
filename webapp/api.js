@@ -280,88 +280,91 @@ const getRecipeDetails = async (req, res) => {
 	});
 }
 
-// const updateRecipe = async (req, res) => {
-
-// 	const email = res.locals.email;
-
-// 	const stepsSchema = Joi.object().keys({
-// 		position: Joi.number().min(1).required(),
-// 		items: Joi.string().required(),
-// 	})
-
-// 	const nutritionSchema = Joi.object().keys({
-// 		calories: Joi.number().integer().required(),
-// 		cholestrol_in_mg: Joi.number().required(),
-// 		sodium_in_mg: Joi.number().integer().required(),
-// 		carbohydrates_in_grams: Joi.number().required(),
-// 		protein_in_grams: Joi.number().required(),
-// 	}).required();
-
-// 	const schema = {
-// 		cook_time_in_min: Joi.number().multiple(5).required(),
-// 		prep_time_in_min: Joi.number().multiple(5).required(),
-// 		title: Joi.string().required(),
-// 		cusine: Joi.string().required(),
-// 		servings: Joi.number().min(1).max(5).required(),
-// 		ingredients: Joi.array().required(),
-// 		steps: Joi.array().items(stepsSchema).required(),
-// 		nutrition_information: nutritionSchema,
-// 	};
-
-// 	const { error } = Joi.validate(req.body, schema);
-
-// 	if(error) return res.status(400).send(error.details[0].message);
-
-// 	try{
-// 		const {rows: [recipe]} = await db.getRecipeDetails(id);
-// 		const now = new Date();
+const updateRecipe = async (req, res) => {
+	const email = res.locals.email;
+	const id = req.params.id;
 	
-// 		const updateRecipeInput = {
-// 			id: recipe.id,
-// 			created_ts: recipe.created_ts,
-// 			updated_ts: now,
-// 			author_id: recipe.author_id,
-// 			cook_time_in_min: req.body.cook_time_in_min,
-// 			prep_time_in_min: req.body.prep_time_in_min,
-// 			total_time_in_min: req.body.cook_time_in_min + req.body.prep_time_in_min,
-// 			title: req.body.title,
-// 			cusine: req.body.cusine,
-// 			servings: req.body.servings,
-// 			ingredients: req.body.ingredients,
-// 		};
-
-// 	  	await db.updateRecipe(updateRecipeInput);
-
-// 		for(const step of req.body.steps) {
-// 			const stepInput = {
-// 				id: recipe.id,
-// 				position: step.position,
-// 				items: step.items,
-// 				recipe_id: recipeInput.id,
-// 			};
-
-// 			await db.updateRecipeStep(stepInput);
-// 		}
-
-// 		const nutritionInput = {
-// 			id: recipe.id,
-// 			...req.body.nutrition_information,
-// 			recipeId: recipeInput.id,
-// 		};
-
-// 		await db.updateRecipeNutritionInformation(nutritionInput);
+	const stepsSchema = Joi.object().keys({
+		position: Joi.number().min(1).required(),
+		items: Joi.string().required(),
+	})
 	
-// 		res.status(201).send({
-// 			...recipeInput,
-// 			steps: req.body.steps,
-// 			nutrition_information: req.body.nutrition_information,
-// 		});
-// 	} catch(err) {
-// 		console.log(err);
-// 		res.sendStatus(500);
-// 	}
+	const nutritionSchema = Joi.object().keys({
+		calories: Joi.number().integer().required(),
+		cholestrol_in_mg: Joi.number().required(),
+		sodium_in_mg: Joi.number().integer().required(),
+		carbohydrates_in_grams: Joi.number().required(),
+		protein_in_grams: Joi.number().required(),
+	}).optional();
 
-// }
+	const schema = {
+		cook_time_in_min: Joi.number().multiple(5).optional(),
+		prep_time_in_min: Joi.number().multiple(5).optional(),
+		title: Joi.string().optional(),
+		cusine: Joi.string().optional(),
+		servings: Joi.number().min(1).max(5).optional(),
+		ingredients: Joi.array().optional(),
+		steps: Joi.array().items(stepsSchema).optional(),
+		nutrition_information: nutritionSchema,
+	};
+
+	const {rows: [user]} = await db.getUserDetails(email);
+	const {rows: recipeDetails} = await db.getRecipeDetails(id);
+
+	if(lodash.isEmpty(recipeDetails)) return res.sendStatus(404);
+
+	if(user.id !== recipeDetails[0].author_id) return res.sendStatus(401);
+
+	if(lodash.isEmpty(req.body)) return res.status(400).send("Cannot send empty request object");
+
+	const validationResult = Joi.validate(req.body, schema);
+
+	if(validationResult.error) return res.status(400).send(validationResult.error.details[0].message);
+
+   	const now = new Date();
+	const recipe = recipeDetails[0];
+   	const newCookTime = req.body.cook_time_in_min ? req.body.cook_time_in_min : recipe.cook_time_in_min;
+   	const newPrepTime = req.body.prep_time_in_min ? req.body.prep_time_in_min : recipe.prep_time_in_min;
+   	const newTitle = req.body.title ? req.body.title : recipe.title;
+   	const newCusine = req.body.cusine ? req.body.cusine : recipe.cusine;
+   	const newServings = req.body.servings ? req.body.servings : recipe.servings;
+   	const newIngredients = req.body.ingredients ? req.body.ingredients : recipe.ingredients;
+	
+   	const updateRecipeInput = {
+   		created_ts: recipe.created_ts,
+   		updated_ts: now,
+   	    author_id: user.id,
+   	    cook_time_in_min: newCookTime,
+   	    prep_time_in_min: newPrepTime,
+   	    total_time_in_min: newCookTime + newPrepTime,
+   	    title: newTitle,
+   	    cusine: newCusine,
+   	    servings: newServings,
+   	    ingredients: newIngredients
+   	}
+   	await db.updateRecipe(updateRecipeInput, id);
+
+	if(req.body.steps) {
+		await db.deleteRecipeOldSteps(id);
+
+		for(const step of req.body.steps) {
+			const stepInformation = {
+				id: uuid(),
+				position: step.position,
+				items: step.items,
+				recipe_id: id,
+			};
+
+			await db.createRecipeStep(stepInformation);
+		}
+	}   
+
+   	if(req.body.nutrition_information) {
+		await db.updateRecipeNutritionInformation(req.body.nutrition_information, id);
+	}
+
+	res.sendStatus(200);
+}
 
 const deleteRecipe = async (req, res) => {
 	const email = res.locals.email;
@@ -388,7 +391,5 @@ module.exports = {
 	createRecipe,
 	getRecipeDetails,
 	deleteRecipe,
-	// updateRecipe,
-	// updateRecipeStep,
-	// updateRecipeNutritionInformation
+	updateRecipe
 };

@@ -35,9 +35,8 @@ app.put("/v1/user/self",api.updateUserDetails);
 
 app.post("/v1/recipe", api.createRecipe);
 app.get("/v1/recipe/:id", api.getRecipeDetails);
-// app.put("/v1/recipe/:id", api.updateRecipe);
 app.delete("/v1/recipe/:id", api.deleteRecipe);
-
+app.put("/v1/recipe/:id", api.updateRecipe);
 
 app.listen(port, () => {
   console.log(`App running on port ${port}.`);
