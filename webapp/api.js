@@ -254,10 +254,6 @@ const getRecipeDetails = async (req, res) => {
     const {rows: recipeDetails} = await db.getRecipeDetails(id);
     const {rows: recipeSteps} = await db.getRecipeSteps(id);
 	const {rows: recipeNutritionInformaiton} = await db.getRecipeNutritionInformation(id);
-	
-	if(lodash.isEmpty(recipeDetails)) return res.sendStatus(404);
-
-	const recipe = recipeDetails[0];
 
     if(lodash.isEmpty(recipeDetails)) return res.sendStatus(404);
 
