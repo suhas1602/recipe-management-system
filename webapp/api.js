@@ -367,8 +367,37 @@ const updateRecipe = async (req, res) => {
    	if(req.body.nutrition_information) {
 		await db.updateRecipeNutritionInformation(req.body.nutrition_information, id);
 	}
+	const {rows: UrecipeDetails} = await db.getRecipeDetails(id);
+    const {rows: UrecipeSteps} = await db.getRecipeSteps(id);
+	// const {rows: UrecipeNutritionInformaiton} = await db.getRecipeNutritionInformation(id);
+	const {rows: [UrecipeNutritionInformaiton]} = await db.getRecipeNutritionInformation(id);
+    const Urecipe = UrecipeDetails[0];
 
-	res.sendStatus(200);
+	res.status(200).send({
+		id: Urecipe.id,
+		created_ts: Urecipe.created_ts,
+		updated_ts: Urecipe.updated_ts,
+		author_id: Urecipe.author_id,
+		cook_time_in_min: Urecipe.cook_time_in_min,
+		prep_time_in_min: Urecipe.prep_time_in_min,
+		total_time_in_min: Urecipe.total_time_in_min,
+		title: Urecipe.title,
+		cusine: Urecipe.cusine,
+		servings: Urecipe.servings,
+		ingredients: Urecipe.ingredients,
+		steps: UrecipeSteps.map(item => ({
+			position: item.position,
+			items: item.items
+		})),
+		// nutrition_information: UrecipeNutritionInformaiton.map(item =>({
+		// 	calories: item.calories,
+		// 	cholestrol_in_mg: item.cholestrol_in_mg,
+		// 	sodium_in_mg: item.sodium_in_mg,
+		// 	carbohydrates_in_grams: item.carbohydrates_in_grams,
+		// 	protein_in_grams: item.protein_in_grams
+		// }))
+		nutrition_information: UrecipeNutritionInformaiton
+});
 }
 
 const deleteRecipe = async (req, res) => {
