@@ -259,6 +259,10 @@ const getRecipeDetails = async (req, res) => {
 
 	const recipe = recipeDetails[0];
 
+    if(lodash.isEmpty(recipeDetails)) return res.sendStatus(404);
+
+    const recipe = recipeDetails[0];
+
     res.status(200).send({
 		    id: recipe.id,
 			created_ts: recipe.created_ts,
