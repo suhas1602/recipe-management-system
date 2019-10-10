@@ -17,13 +17,13 @@ echo "VpcId: ${vpcId}"
 aws ec2 create-tags --resources ${vpcId} --tags Key=Name,Value=${VPC_NAME} --profile ${PROFILE}
 
 availability_zone_1="${AWS_REGION}a" 
-aws ec2 create-subnet --vpc-id ${vpcId} --cidr-block ${SUBNET_BLOCK_1} --availability-zone ${availability_zone_1} --profile ${PROFILE}  
+subnet1="$(aws ec2 create-subnet --vpc-id ${vpcId} --cidr-block ${SUBNET_BLOCK_1} --availability-zone ${availability_zone_1} --profile ${PROFILE} | jq -r '.Subnet.SubnetId')"  
 
 availability_zone_2="${AWS_REGION}b" 
-aws ec2 create-subnet --vpc-id ${vpcId} --cidr-block ${SUBNET_BLOCK_2} --availability-zone ${availability_zone_2} --profile ${PROFILE}
+subnet2="$(aws ec2 create-subnet --vpc-id ${vpcId} --cidr-block ${SUBNET_BLOCK_2} --availability-zone ${availability_zone_2} --profile ${PROFILE} | jq -r '.Subnet.SubnetId')"
 
 availability_zone_3="${AWS_REGION}c" 
-aws ec2 create-subnet --vpc-id ${vpcId} --cidr-block ${SUBNET_BLOCK_3} --availability-zone ${availability_zone_3} --profile ${PROFILE}
+subnet3="$(aws ec2 create-subnet --vpc-id ${vpcId} --cidr-block ${SUBNET_BLOCK_3} --availability-zone ${availability_zone_3} --profile ${PROFILE} | jq -r '.Subnet.SubnetId')"
 
 gatewayId="$(aws ec2 --profile dev create-internet-gateway | jq '.InternetGateway.InternetGatewayId')"
 
@@ -43,4 +43,8 @@ echo "RouteTableId: ${routeTableId}"
 
 aws ec2 create-route --destination-cidr-block 0.0.0.0/0 --gateway-id ${gatewayId} --route-table-id ${routeTableId} --profile ${PROFILE}
 
-echo "Networking setup created successfully"
+aws ec2 associate-route-table --route-table-id ${routeTableId} --subnet-id ${subnet1} --profile ${PROFILE}
+aws ec2 associate-route-table --route-table-id ${routeTableId} --subnet-id ${subnet2} --profile ${PROFILE}
+aws ec2 associate-route-table --route-table-id ${routeTableId} --subnet-id ${subnet3} --profile ${PROFILE}
+
+echo "Network infrastructure created successfully"
