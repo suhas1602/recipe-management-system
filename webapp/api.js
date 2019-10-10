@@ -369,7 +369,8 @@ const updateRecipe = async (req, res) => {
 	}
 	const {rows: UrecipeDetails} = await db.getRecipeDetails(id);
     const {rows: UrecipeSteps} = await db.getRecipeSteps(id);
-	const {rows: UrecipeNutritionInformaiton} = await db.getRecipeNutritionInformation(id);
+	// const {rows: UrecipeNutritionInformaiton} = await db.getRecipeNutritionInformation(id);
+	const {rows: [UrecipeNutritionInformaiton]} = await db.getRecipeNutritionInformation(id);
     const Urecipe = UrecipeDetails[0];
 
 	res.status(200).send({
@@ -388,13 +389,14 @@ const updateRecipe = async (req, res) => {
 			position: item.position,
 			items: item.items
 		})),
-		nutrition_information: UrecipeNutritionInformaiton.map(item =>({
-			calories: item.calories,
-			cholestrol_in_mg: item.cholestrol_in_mg,
-			sodium_in_mg: item.sodium_in_mg,
-			carbohydrates_in_grams: item.carbohydrates_in_grams,
-			protein_in_grams: item.protein_in_grams
-		}))
+		// nutrition_information: UrecipeNutritionInformaiton.map(item =>({
+		// 	calories: item.calories,
+		// 	cholestrol_in_mg: item.cholestrol_in_mg,
+		// 	sodium_in_mg: item.sodium_in_mg,
+		// 	carbohydrates_in_grams: item.carbohydrates_in_grams,
+		// 	protein_in_grams: item.protein_in_grams
+		// }))
+		nutrition_information: UrecipeNutritionInformaiton
 });
 }
 
