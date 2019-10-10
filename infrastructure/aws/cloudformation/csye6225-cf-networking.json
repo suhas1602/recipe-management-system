@@ -1,0 +1,138 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Parameters": {
+        "CidrBlock": { "Type": "String" },
+        "VpcName": { "Type": "String" },
+        "SubnetBlock1": { "Type": "String" },
+        "SubnetBlock2": { "Type": "String" },
+        "SubnetBlock3": { "Type": "String" },
+        "AvailabilityZone1": { "Type": "String" },
+        "AvailabilityZone2": { "Type": "String" },
+        "AvailabilityZone3": { "Type": "String" }
+    },
+    "Resources": {
+        "NetVpc": {
+            "Type": "AWS::EC2::VPC",
+            "Properties" : {
+                "CidrBlock": {
+                    "Ref": "CidrBlock"
+                },
+                "Tags": [{
+                    "Key": "Name",
+                    "Value": {
+                        "Ref": "VpcName"
+                    }
+                }]
+            }
+        },
+        "Subnet1": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "CidrBlock": {
+                    "Ref": "SubnetBlock1"
+                },    
+                "VpcId": {
+                    "Ref": "NetVpc"
+                },
+                "AvailabilityZone": {
+                    "Ref": "AvailabilityZone1"
+                }
+            }
+        },
+        "Subnet2": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "CidrBlock": {
+                    "Ref": "SubnetBlock2"
+                },    
+                "VpcId": {
+                    "Ref": "NetVpc"
+                },
+                "AvailabilityZone": {
+                    "Ref": "AvailabilityZone2"
+                }
+            }
+        },
+        "Subnet3": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "CidrBlock": {
+                    "Ref": "SubnetBlock3"
+                },    
+                "VpcId": {
+                    "Ref": "NetVpc"
+                },
+                "AvailabilityZone": {
+                    "Ref": "AvailabilityZone3"
+                }
+            }
+        },
+        "InternetGateway": {
+            "Type": "AWS::EC2::InternetGateway" 
+        },
+        "InternetGatewayAttachment": {
+            "Type" : "AWS::EC2::VPCGatewayAttachment",
+            "Properties" : {
+                "InternetGatewayId" : {
+                    "Ref": "InternetGateway"
+                },
+                "VpcId" : {
+                    "Ref": "NetVpc"
+                }
+              }
+        }, 
+        "RouteTable": {
+            "Type" : "AWS::EC2::RouteTable",
+            "Properties" : {
+                "VpcId" : {
+                    "Ref": "NetVpc"
+                }
+            }
+        },
+        "Subnet1Association": {
+            "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties" : {
+                "RouteTableId" : {
+                    "Ref": "RouteTable"
+                },
+                "SubnetId" : {
+                    "Ref": "Subnet1"
+                }
+            }
+        },
+        "Subnet2Association": {
+            "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties" : {
+                "RouteTableId" : {
+                    "Ref": "RouteTable"
+                },
+                "SubnetId" : {
+                    "Ref": "Subnet2"
+                }
+            }
+        },
+        "Subnet3Association": {
+            "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties" : {
+                "RouteTableId" : {
+                    "Ref": "RouteTable"
+                },
+                "SubnetId" : {
+                    "Ref": "Subnet3"
+                }
+            }
+        },
+        "InternetGatewayRoute": {
+            "Type" : "AWS::EC2::Route",
+            "Properties" : {
+                "DestinationCidrBlock" : "0.0.0.0/0",
+                "GatewayId" : {
+                    "Ref": "InternetGateway"
+                },
+                "RouteTableId" : {
+                    "Ref": "RouteTable"
+                }
+            }
+        }
+    }
+}
