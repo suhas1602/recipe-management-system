@@ -32,79 +32,63 @@ const authorizeMiddleware = async (req, res, next) => {
 	const email = credentials[0];
 	const password = credentials[1];
 
-	if(!password || !email) return res.sendStatus(401);
+	if(!password || !email) return res.status(401).json("Unauthorized");
   
-	 const {rows: emails} = await db.getAllEmail();
-  
-	 if(!emails.map(e => e.email).includes(email))  return res.sendStatus(401);
-  
-	 const {rows: users} = await db.getUserDetails(email);
-	 const result = await bcrypt.compare(password, users[0].password);
-  
-	 if(result) {
-		 res.locals.email = email;
-	 } else {
-		 return res.sendStatus(401);
-	 }
+	const {rows: emails} = await db.getAllEmail();
+
+	if(!emails.map(e => e.email).includes(email))  return res.status(401).json("Unauthorized");
+
+	const {rows: users} = await db.getUserDetails(email);
+	const result = await bcrypt.compare(password, users[0].password);
+
+	if(result) {
+	 res.locals.email = email;
+	} else {
+	 return res.status(401).json("Unauthorized");
+	}
   
 	 next();
   }
     
 
-const createUser = (request, response) => {
+const createUser = async (request, response) => {
 	const email = request.body.email;
 	const firstname = request.body.firstname;
 	const lastname = request.body.lastname;
 	const password = request.body.password;
 
-	if(!checkEmail(email)){
-		response.status(400).send("Email does not meet criteria");
-	 } else{
+	if(!checkEmail(email)) return response.status(400).json("Email does not meet criteria");
 
-	if(!checkPassword(password)) {
-		response.status(400).send("Password does not meet criteria");
-	} else {
-		db.getAllEmail().then(res => {
-			const allEmails = res.rows.map(item => item.email);
-			if(!allEmails.includes(email)) {
-				bcrypt.hash(password,saltRounds).then(hashedPassword => {
-					const now = new Date();
-					const createUserInput = {
-						id: uuid(),
-						email,
-						firstname,
-						lastname,
-						password:hashedPassword,
-						account_created: now,
-						account_updated: now,
-					};
-	
-					db.createUser(createUserInput)
-						.then(res => {
-							response.status(201).json({
-								id: createUserInput.id,
-								email,
-								firstname,
-								lastname,
-								account_created: createUserInput.account_created,
-								account_updated: createUserInput.account_updated,
-							});
-						})
-						.catch(err => {
-							console.log(err);
-							response.status(400).send("Error");
-						})
-				});
-			} else {
-				response.status(400).send("Email already exists");
-			}
-		}).catch(err => {
-			console.log(err);
-			response.status(400).send("Error");
-		});
-	}
-   }
-  
+	if(!checkPassword(password)) return response.status(400).json("Password does not meet criteria")
+
+	const { rows } = await db.getAllEmail();
+	const allEmails = rows.map(item => item.email);
+
+	if(allEmails.includes(email)) return response.status(400).json("Email already exists");
+
+	const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+	const now = new Date();
+	const createUserInput = {
+		id: uuid(),
+		email,
+		firstname,
+		lastname,
+		password:hashedPassword,
+		account_created: now,
+		account_updated: now,
+	};
+
+	await db.createUser(createUserInput);
+
+	response.status(201).json({
+		id: createUserInput.id,
+		email,
+		firstname,
+		lastname,
+		account_created: createUserInput.account_created,
+		account_updated: createUserInput.account_updated,
+	}); 
 }
 
 const getUserDetails = async (req, res) => {
@@ -160,7 +144,7 @@ const updateUserDetails = async (req, res) => {
 	}
     
 	db.updateUserDetails(updateUserDetailsInput).then(() => {
-        res.status(204).send();
+        res.sendStatus(204);
 	});
 
 }
@@ -194,7 +178,7 @@ const createRecipe = async (req, res) => {
 
 	const { error } = Joi.validate(req.body, schema);
 
-	if(error) return res.status(400).send(error.details[0].message);
+	if(error) return res.status(400).json(error.details[0].message);
 
 	try{
 		const {rows: [user]} = await db.getUserDetails(email);
@@ -303,6 +287,10 @@ const updateRecipe = async (req, res) => {
 	}).optional();
 
 	const schema = {
+		id: Joi.forbidden(),
+		created_ts: Joi.forbidden(),
+		updated_ts: Joi.forbidden(),
+		author_id: Joi.forbidden(),
 		cook_time_in_min: Joi.number().multiple(5).optional(),
 		prep_time_in_min: Joi.number().multiple(5).optional(),
 		title: Joi.string().optional(),
@@ -316,15 +304,15 @@ const updateRecipe = async (req, res) => {
 	const {rows: [user]} = await db.getUserDetails(email);
 	const {rows: recipeDetails} = await db.getRecipeDetails(id);
 
-	if(lodash.isEmpty(recipeDetails)) return res.sendStatus(404);
+	if(lodash.isEmpty(recipeDetails)) return res.status(404).json("Not Found");
 
-	if(user.id !== recipeDetails[0].author_id) return res.sendStatus(401);
+	if(user.id !== recipeDetails[0].author_id) return res.status(401).json("Unauthorized");
 
-	if(lodash.isEmpty(req.body)) return res.status(400).send("Cannot send empty request object");
+	if(lodash.isEmpty(req.body)) return res.status(400).json("Cannot send empty request object");
 
 	const validationResult = Joi.validate(req.body, schema);
 
-	if(validationResult.error) return res.status(400).send(validationResult.error.details[0].message);
+	if(validationResult.error) return res.status(400).json(validationResult.error.details[0].message);
 
    	const now = new Date();
 	const recipe = recipeDetails[0];
@@ -368,7 +356,18 @@ const updateRecipe = async (req, res) => {
 		await db.updateRecipeNutritionInformation(req.body.nutrition_information, id);
 	}
 
-	res.sendStatus(200);
+	const {rows: [updatedRecipe]} = await db.getRecipeDetails(id);
+	const {rows: recipeSteps} = await db.getRecipeSteps(id);
+	const {rows: [nutritionInformation]} = await db.getRecipeNutritionInformation(id);
+
+	res.status(200).send({
+		...updatedRecipe,
+		steps: recipeSteps.map(step => ({
+			items: step.items,
+			position: step.position
+		})),
+		nutritionInformation: nutritionInformation
+	});
 }
 
 const deleteRecipe = async (req, res) => {

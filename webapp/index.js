@@ -9,7 +9,7 @@ const api = require("./api");
 
 const unless = function(routes, middleware) {
   return function(req, res, next) {
-      if (routes.find(r => req.path.startsWith(r.path) && req.method === r.method)) {
+      if (req.path === "/" || routes.find(r => req.path.startsWith(r.path) && req.method === r.method)) {
           return next();
       } else {
           return middleware(req, res, next);
@@ -17,7 +17,10 @@ const unless = function(routes, middleware) {
   };
 };
 
-app.use(unless([{path: '/v1/user', method: 'POST'}, {path: '/v1/recipe', method: 'GET'}], api.authorizeMiddleware));
+app.use(unless([
+  {path: '/v1/user', method: 'POST'}, 
+  {path: '/v1/recipe', method: 'GET'}
+], api.authorizeMiddleware));
 
 app.use(bodyParser.json());
 app.use(
@@ -26,9 +29,9 @@ app.use(
   })
 );
 
-// app.get("/", (request, response) => {
-//   response.json({ info: "Node.js, Express, and Postgres API" });
-// });
+app.get("/", (request, response) => {
+  response.json({ info: "Node.js, Express, and Postgres API" });
+});
 app.post("/v1/user", api.createUser);
 app.get("/v1/user/self", api.getUserDetails);
 app.put("/v1/user/self",api.updateUserDetails);
