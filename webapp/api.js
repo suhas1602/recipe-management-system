@@ -2,9 +2,11 @@ const uuid = require("uuid");
 const bcrypt = require("bcrypt");
 const Joi = require('joi');
 const lodash = require('lodash');
+const formidable = require('formidable');
 const saltRounds = 10;
 
 const db = require("./db");
+const s3 = require("./s3");
 
 const checkPassword = (password) => {
 	if(password.length <= 8) return false;
@@ -387,6 +389,40 @@ const deleteRecipe = async (req, res) => {
 	res.sendStatus(204);
 }
 
+const createImage = async (req, res) => {
+	const email = res.locals.email;
+	const recipeId = req.params.id;
+
+	const {rows: [user]} = await db.getUserDetails(email);
+	const {rows: recipeDetails} = await db.getRecipeDetails(recipeId);
+
+	if(lodash.isEmpty(recipeDetails)) return res.status(400).json("Recipe not found");
+	
+	const [recipe] = recipeDetails;
+
+	if(recipe.author_id !== user.id) return res.status(400).json("User is not the author of this recipe");
+
+	const directories = __dirname.split("/");
+	const imageDirectory = [...directories.slice(0, directories.length -1), "images"].join("/");
+
+	new formidable.IncomingForm().parse(req, async (err, fields, files) => {
+		if (err) {
+		  console.error('Error', err)
+		  throw err
+		}
+		// console.log('Fields', fields)
+		// console.log('Files', files)
+		for (const [key, file] of Object.entries(files)) {
+			// console.log(file);
+			const s3Location = await s3.uploadFile(file);
+			res.status(201).send({
+				id: recipeId,
+				url: s3Location,
+			})  
+		}
+	  })
+} 
+
 module.exports = {
 	authorizeMiddleware,
 	createUser,
@@ -395,5 +431,6 @@ module.exports = {
 	createRecipe,
 	getRecipeDetails,
 	deleteRecipe,
-	updateRecipe
+	updateRecipe,
+	createImage,
 };
