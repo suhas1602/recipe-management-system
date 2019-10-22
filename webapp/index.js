@@ -42,6 +42,8 @@ app.delete("/v1/recipe/:id", api.deleteRecipe);
 app.put("/v1/recipe/:id", api.updateRecipe);
 
 app.post("/v1/recipe/:id/image", api.createImage);
+app.get("/v1/recipe/:recipeId/image/:imageId", api.getImage);
+app.delete("/v1/recipe/:recipeId/image/:imageId", api.deleteRecipeImage)
 
 app.listen(port, () => {
   console.log(`App running on port ${port}.`);

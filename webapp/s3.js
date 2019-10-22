@@ -35,6 +35,24 @@ const uploadFile = (file) => {
     })  
 }
 
+const deleteFile = (key) => {
+    const params = {
+        Bucket: "webapp.suhaspasricha.com",
+        Key: key
+    };
+
+    return new Promise((resolve, reject) => {
+        s3.deleteObject(params, function(err, data) {
+            if (err) {
+                console.log("Error", err);
+            } else {
+                resolve(data);
+            }
+        });
+    });
+}
+
 module.exports = {
     uploadFile,
+    deleteFile,
 }

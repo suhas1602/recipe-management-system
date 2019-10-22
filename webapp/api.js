@@ -402,26 +402,71 @@ const createImage = async (req, res) => {
 
 	if(recipe.author_id !== user.id) return res.status(400).json("User is not the author of this recipe");
 
-	const directories = __dirname.split("/");
-	const imageDirectory = [...directories.slice(0, directories.length -1), "images"].join("/");
-
 	new formidable.IncomingForm().parse(req, async (err, fields, files) => {
 		if (err) {
 		  console.error('Error', err)
 		  throw err
 		}
-		// console.log('Fields', fields)
-		// console.log('Files', files)
+		
 		for (const [key, file] of Object.entries(files)) {
-			// console.log(file);
 			const s3Location = await s3.uploadFile(file);
-			res.status(201).send({
-				id: recipeId,
-				url: s3Location,
-			})  
+			const imageInput = {
+				id: uuid(),
+				imageUrl: s3Location,
+				recipeId,
+			}
+			try {
+				await db.saveImageForRecipe(imageInput);
+				res.status(201).json({
+					id: imageInput.id,
+					url: s3Location,
+				});
+			}  catch(err) {
+				console.error(err);
+				return res.status(400).json(err);
+			}
 		}
 	  })
-} 
+}
+
+const getImage = async (req, res) => {
+	const recipeId = req.params.recipeId;
+	const imageId = req.params.imageId;
+
+	const {rows} = await db.getRecipeImage(recipeId, imageId);
+	if(lodash.isEmpty(rows)) return res.status(404).json("Not Found");
+
+	const [image] = rows;
+	return res.status(200).json({
+		id: image.id,
+		url: image.url,
+	});
+}
+
+const deleteRecipeImage = async (req,res) => {
+	const recipeId = req.params.recipeId;
+	const imageId = req.params.imageId;
+	
+	const {rows} = await db.getRecipeImage(recipeId, imageId);
+	if(lodash.isEmpty(rows)) return res.status(404).json("Not Found");
+
+	const [imageDetails] = rows;
+
+	const urlPath = imageDetails.url.split("/");
+	const s3Key = urlPath[urlPath.length - 1];
+
+	try {
+		const data = await s3.deleteFile(s3Key);
+		// console.log(data);
+
+		await db.deleteRecipeImage(recipeId, imageId);
+
+		return res.status(204).json("No Content");
+	} catch (err) {
+		console.log(err);
+		return res.status(400).json("Bad Request");
+	}
+}
 
 module.exports = {
 	authorizeMiddleware,
@@ -433,4 +478,6 @@ module.exports = {
 	deleteRecipe,
 	updateRecipe,
 	createImage,
+	getImage,
+	deleteRecipeImage,
 };
