@@ -11,3 +11,7 @@ module "networking" {
     subnetBlock = var.subnetBlock
     region = var.region
 }
+
+module "application"{
+    source="./application"
+}
