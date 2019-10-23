@@ -1,9 +1,3 @@
-
-provider "aws" {
-    profile = var.profile
-    region  = var.region
-}
-
 resource "aws_vpc" "main" {
     cidr_block = var.cidrBlock
     
