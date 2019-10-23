@@ -25,7 +25,7 @@ subnet2="$(aws ec2 create-subnet --vpc-id ${vpcId} --cidr-block ${SUBNET_BLOCK_2
 availability_zone_3="${AWS_REGION}c" 
 subnet3="$(aws ec2 create-subnet --vpc-id ${vpcId} --cidr-block ${SUBNET_BLOCK_3} --availability-zone ${availability_zone_3} --profile ${PROFILE} | jq -r '.Subnet.SubnetId')"
 
-gatewayId="$(aws ec2 --profile dev create-internet-gateway | jq '.InternetGateway.InternetGatewayId')"
+gatewayId="$(aws ec2 --profile ${PROFILE} create-internet-gateway | jq '.InternetGateway.InternetGatewayId')"
 
 gatewayId="${gatewayId%\"}"
 gatewayId="${gatewayId#\"}"
