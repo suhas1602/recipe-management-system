@@ -15,7 +15,40 @@ resource "aws_db_instance" "db_instance" {
   publicly_accessible = true
   name = "csye6225"
   port = "5432"
-  
+  vpc_security_group_ids = ["${aws_security_group.databaseSc.id}"]
+  skip_final_snapshot = true
+}
+
+resource "aws_s3_bucket" "S3_instance" {
+  bucket = var.bucketName
+  acl = "private"
+  force_destroy = true
+   lifecycle_rule {
+    enabled = true
+    transition {
+      days          = 30
+      storage_class = "STANDARD_IA"
+    }
+   }
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        sse_algorithm     = "aws:kms"
+      }
+    }
+ }
+}
+
+resource "aws_dynamodb_table" "app_dynamo_table"{
+  name = "csye6225"
+  hash_key = "Id"
+  read_capacity  = 20
+  write_capacity = 20
+  attribute {
+    name = "Id"
+    type = "S"
+  }
+
 }
 
 resource "aws_instance" "instance" {
@@ -30,9 +63,29 @@ resource "aws_instance" "instance" {
   }
 }
 
+resource "aws_security_group_rule" "app_only"{
+  type = "ingress"
+  from_port = 5432
+  to_port = 5432
+  protocol = "tcp"
+  security_group_id = "${aws_security_group.databaseSc.id}"
+  source_security_group_id = "${aws_security_group.applicationSc.id}"
+
+}
+
+resource"aws_security_group" "databaseSc"{
+  name = "database_security_group"
+
+    ingress{
+    from_port = 5432
+    to_port = 5432
+    protocol = "tcp"
+  }
+
+}
 
 resource "aws_security_group" "applicationSc" {
-  name = "application_security"
+  name = "application_security_group"
   ingress {
     from_port = 22
     to_port = 22

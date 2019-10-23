@@ -10,3 +10,7 @@ variable "amiId" {
 variable "passwd" {
     default = "suhabhi71"
 }
+
+variable "bucketName" {
+    default = "webapp.abhishekkamble.me"
+}
