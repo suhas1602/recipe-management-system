@@ -2,9 +2,11 @@ const uuid = require("uuid");
 const bcrypt = require("bcrypt");
 const Joi = require('joi');
 const lodash = require('lodash');
+const formidable = require('formidable');
 const saltRounds = 10;
 
 const db = require("./db");
+const s3 = require("./s3");
 
 const checkPassword = (password) => {
 	if(password.length <= 8) return false;
@@ -32,79 +34,63 @@ const authorizeMiddleware = async (req, res, next) => {
 	const email = credentials[0];
 	const password = credentials[1];
 
-	if(!password || !email) return res.sendStatus(401);
+	if(!password || !email) return res.status(401).json("Unauthorized");
   
-	 const {rows: emails} = await db.getAllEmail();
-  
-	 if(!emails.map(e => e.email).includes(email))  return res.sendStatus(401);
-  
-	 const {rows: users} = await db.getUserDetails(email);
-	 const result = await bcrypt.compare(password, users[0].password);
-  
-	 if(result) {
-		 res.locals.email = email;
-	 } else {
-		 return res.sendStatus(401);
-	 }
+	const {rows: emails} = await db.getAllEmail();
+
+	if(!emails.map(e => e.email).includes(email))  return res.status(401).json("Unauthorized");
+
+	const {rows: users} = await db.getUserDetails(email);
+	const result = await bcrypt.compare(password, users[0].password);
+
+	if(result) {
+	 res.locals.email = email;
+	} else {
+	 return res.status(401).json("Unauthorized");
+	}
   
 	 next();
   }
     
 
-const createUser = (request, response) => {
+const createUser = async (request, response) => {
 	const email = request.body.email;
 	const firstname = request.body.firstname;
 	const lastname = request.body.lastname;
 	const password = request.body.password;
 
-	if(!checkEmail(email)){
-		response.status(400).send("Email does not meet criteria");
-	 } else{
+	if(!checkEmail(email)) return response.status(400).json("Email does not meet criteria");
 
-	if(!checkPassword(password)) {
-		response.status(400).send("Password does not meet criteria");
-	} else {
-		db.getAllEmail().then(res => {
-			const allEmails = res.rows.map(item => item.email);
-			if(!allEmails.includes(email)) {
-				bcrypt.hash(password,saltRounds).then(hashedPassword => {
-					const now = new Date();
-					const createUserInput = {
-						id: uuid(),
-						email,
-						firstname,
-						lastname,
-						password:hashedPassword,
-						account_created: now,
-						account_updated: now,
-					};
-	
-					db.createUser(createUserInput)
-						.then(res => {
-							response.status(201).json({
-								id: createUserInput.id,
-								email,
-								firstname,
-								lastname,
-								account_created: createUserInput.account_created,
-								account_updated: createUserInput.account_updated,
-							});
-						})
-						.catch(err => {
-							console.log(err);
-							response.status(400).send("Error");
-						})
-				});
-			} else {
-				response.status(400).send("Email already exists");
-			}
-		}).catch(err => {
-			console.log(err);
-			response.status(400).send("Error");
-		});
-	}
-   }
-  
+	if(!checkPassword(password)) return response.status(400).json("Password does not meet criteria")
+
+	const { rows } = await db.getAllEmail();
+	const allEmails = rows.map(item => item.email);
+
+	if(allEmails.includes(email)) return response.status(400).json("Email already exists");
+
+	const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+	const now = new Date();
+	const createUserInput = {
+		id: uuid(),
+		email,
+		firstname,
+		lastname,
+		password:hashedPassword,
+		account_created: now,
+		account_updated: now,
+	};
+
+	await db.createUser(createUserInput);
+
+	response.status(201).json({
+		id: createUserInput.id,
+		email,
+		firstname,
+		lastname,
+		account_created: createUserInput.account_created,
+		account_updated: createUserInput.account_updated,
+	}); 
 }
 
 const getUserDetails = async (req, res) => {
@@ -160,7 +146,7 @@ const updateUserDetails = async (req, res) => {
 	}
     
 	db.updateUserDetails(updateUserDetailsInput).then(() => {
-        res.status(204).send();
+        res.sendStatus(204);
 	});
 
 }
@@ -194,7 +180,7 @@ const createRecipe = async (req, res) => {
 
 	const { error } = Joi.validate(req.body, schema);
 
-	if(error) return res.status(400).send(error.details[0].message);
+	if(error) return res.status(400).json(error.details[0].message);
 
 	try{
 		const {rows: [user]} = await db.getUserDetails(email);
@@ -303,6 +289,10 @@ const updateRecipe = async (req, res) => {
 	}).optional();
 
 	const schema = {
+		id: Joi.forbidden(),
+		created_ts: Joi.forbidden(),
+		updated_ts: Joi.forbidden(),
+		author_id: Joi.forbidden(),
 		cook_time_in_min: Joi.number().multiple(5).optional(),
 		prep_time_in_min: Joi.number().multiple(5).optional(),
 		title: Joi.string().optional(),
@@ -316,15 +306,15 @@ const updateRecipe = async (req, res) => {
 	const {rows: [user]} = await db.getUserDetails(email);
 	const {rows: recipeDetails} = await db.getRecipeDetails(id);
 
-	if(lodash.isEmpty(recipeDetails)) return res.sendStatus(404);
+	if(lodash.isEmpty(recipeDetails)) return res.status(404).json("Not Found");
 
-	if(user.id !== recipeDetails[0].author_id) return res.sendStatus(401);
+	if(user.id !== recipeDetails[0].author_id) return res.status(401).json("Unauthorized");
 
-	if(lodash.isEmpty(req.body)) return res.status(400).send("Cannot send empty request object");
+	if(lodash.isEmpty(req.body)) return res.status(400).json("Cannot send empty request object");
 
 	const validationResult = Joi.validate(req.body, schema);
 
-	if(validationResult.error) return res.status(400).send(validationResult.error.details[0].message);
+	if(validationResult.error) return res.status(400).json(validationResult.error.details[0].message);
 
    	const now = new Date();
 	const recipe = recipeDetails[0];
@@ -367,37 +357,19 @@ const updateRecipe = async (req, res) => {
    	if(req.body.nutrition_information) {
 		await db.updateRecipeNutritionInformation(req.body.nutrition_information, id);
 	}
-	const {rows: UrecipeDetails} = await db.getRecipeDetails(id);
-    const {rows: UrecipeSteps} = await db.getRecipeSteps(id);
-	// const {rows: UrecipeNutritionInformaiton} = await db.getRecipeNutritionInformation(id);
-	const {rows: [UrecipeNutritionInformaiton]} = await db.getRecipeNutritionInformation(id);
-    const Urecipe = UrecipeDetails[0];
+
+	const {rows: [updatedRecipe]} = await db.getRecipeDetails(id);
+	const {rows: recipeSteps} = await db.getRecipeSteps(id);
+	const {rows: [nutritionInformation]} = await db.getRecipeNutritionInformation(id);
 
 	res.status(200).send({
-		id: Urecipe.id,
-		created_ts: Urecipe.created_ts,
-		updated_ts: Urecipe.updated_ts,
-		author_id: Urecipe.author_id,
-		cook_time_in_min: Urecipe.cook_time_in_min,
-		prep_time_in_min: Urecipe.prep_time_in_min,
-		total_time_in_min: Urecipe.total_time_in_min,
-		title: Urecipe.title,
-		cusine: Urecipe.cusine,
-		servings: Urecipe.servings,
-		ingredients: Urecipe.ingredients,
-		steps: UrecipeSteps.map(item => ({
-			position: item.position,
-			items: item.items
+		...updatedRecipe,
+		steps: recipeSteps.map(step => ({
+			items: step.items,
+			position: step.position
 		})),
-		// nutrition_information: UrecipeNutritionInformaiton.map(item =>({
-		// 	calories: item.calories,
-		// 	cholestrol_in_mg: item.cholestrol_in_mg,
-		// 	sodium_in_mg: item.sodium_in_mg,
-		// 	carbohydrates_in_grams: item.carbohydrates_in_grams,
-		// 	protein_in_grams: item.protein_in_grams
-		// }))
-		nutrition_information: UrecipeNutritionInformaiton
-});
+		nutritionInformation: nutritionInformation
+	});
 }
 
 const deleteRecipe = async (req, res) => {
@@ -417,6 +389,91 @@ const deleteRecipe = async (req, res) => {
 	res.sendStatus(204);
 }
 
+const createImage = async (req, res) => {
+	const email = res.locals.email;
+	const recipeId = req.params.id;
+
+	const {rows: [user]} = await db.getUserDetails(email);
+	const {rows: recipeDetails} = await db.getRecipeDetails(recipeId);
+
+	if(lodash.isEmpty(recipeDetails)) return res.status(400).json("Recipe not found");
+	
+	const [recipe] = recipeDetails;
+
+	if(recipe.author_id !== user.id) return res.status(400).json("User is not the author of this recipe");
+
+	new formidable.IncomingForm().parse(req, async (err, fields, files) => {
+		if (err) {
+		  console.error('Error', err)
+		  throw err
+		}
+		
+		for (const [key, file] of Object.entries(files)) {
+			if(!(file.type === "image/jpeg" || file.type === "image/png")) return res.status(400).json("Uploaded file must be in jpeg or png format.")
+
+			const fileSize = file.size;
+
+			const s3Data = await s3.uploadFile(file);
+			const imageInput = {
+				id: uuid(),
+				imageUrl: s3Data.Location,
+				recipeId,
+				md5: s3Data.ETag,
+				size: fileSize,
+			}
+			try {
+				await db.saveImageForRecipe(imageInput);
+				res.status(201).json({
+					id: imageInput.id,
+					url: s3Data.Location,
+				});
+			}  catch(err) {
+				console.error(err);
+				return res.status(400).json(err);
+			}
+		}
+	  })
+}
+
+const getImage = async (req, res) => {
+	const recipeId = req.params.recipeId;
+	const imageId = req.params.imageId;
+
+	const {rows} = await db.getRecipeImage(recipeId, imageId);
+	if(lodash.isEmpty(rows)) return res.status(404).json("Not Found");
+
+	const [image] = rows;
+	return res.status(200).json({
+		id: image.id,
+		url: image.url,
+	});
+}
+
+const deleteRecipeImage = async (req,res) => {
+	const recipeId = req.params.recipeId;
+	const imageId = req.params.imageId;
+	
+	const {rows} = await db.getRecipeImage(recipeId, imageId);
+	if(lodash.isEmpty(rows)) return res.status(404).json("Not Found");
+
+	const [imageDetails] = rows;
+
+	const urlPath = imageDetails.url.split("/");
+	const s3Key = urlPath[urlPath.length - 1];
+
+	try {
+		const data = await s3.deleteFile(s3Key);
+		// console.log(data);
+
+		await db.deleteRecipeImage(recipeId, imageId);
+
+		return res.status(204).json("No Content");
+	} catch (err) {
+		console.log(err);
+		return res.status(400).json("Bad Request");
+	}
+}
+
 module.exports = {
 	authorizeMiddleware,
 	createUser,
@@ -425,5 +482,8 @@ module.exports = {
 	createRecipe,
 	getRecipeDetails,
 	deleteRecipe,
-	updateRecipe
+	updateRecipe,
+	createImage,
+	getImage,
+	deleteRecipeImage,
 };

@@ -165,7 +165,29 @@ const updateRecipeNutritionInformation = async(newNutrition_information, recipeI
   return res;
 }
 
+const saveImageForRecipe = async (imageInput) => {
+  return await pool.query("INSERT INTO public.recipe_image (id,recipe_id,url,md5,size) VALUES ($1,$2,$3,$4,$5)", [
+    imageInput.id,
+    imageInput.recipeId,
+    imageInput.imageUrl,
+    imageInput.md5,
+    imageInput.size,
+  ]); 
+}
 
+const getRecipeImage = async (recipeId, imageId) => {
+  return await pool.query("SELECT * FROM public.recipe_image WHERE recipe_id=$1 AND id=$2", [
+    recipeId,
+    imageId,
+  ]);
+}
+
+const deleteRecipeImage = async (recipeId, imageId) => {
+  return await pool.query("DELETE FROM public.recipe_image WHERE recipe_id=$1 AND id=$2", [
+    recipeId,
+    imageId,
+  ]);
+}
 
 module.exports = {
   getAllEmail,
@@ -181,5 +203,8 @@ module.exports = {
   deleteRecipe,
   updateRecipe,
   deleteRecipeOldSteps,
-  updateRecipeNutritionInformation
+  updateRecipeNutritionInformation,
+  saveImageForRecipe,
+  getRecipeImage,
+  deleteRecipeImage,
 }
