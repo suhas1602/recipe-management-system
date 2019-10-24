@@ -3,6 +3,11 @@ resource "aws_key_pair" "publicKey" {
   public_key = var.public_key_value
 }
 
+resource "aws_db_subnet_group" "rdsSubnetGrp" {
+  name       = "main"
+  subnet_ids = var.subnetIds
+}
+
 resource "aws_db_instance" "db_instance" {
   allocated_storage = 20
   engine = "postgres"
@@ -17,6 +22,7 @@ resource "aws_db_instance" "db_instance" {
   port = "5432"
   vpc_security_group_ids = ["${aws_security_group.databaseSc.id}"]
   skip_final_snapshot = true
+  db_subnet_group_name = "${aws_db_subnet_group.rdsSubnetGrp.name}"
 }
 
 resource "aws_s3_bucket" "S3_instance" {
@@ -55,13 +61,19 @@ resource "aws_instance" "instance" {
   ami           = var.amiId
   instance_type = "t2.micro"
   key_name = "${aws_key_pair.publicKey.key_name}"
-  security_groups = ["${aws_security_group.applicationSc.name}"]
+  vpc_security_group_ids = ["${aws_security_group.applicationSc.id}"]
   disable_api_termination = false 
   root_block_device {
     volume_size = "20"
     volume_type = "gp2"
   }
+  subnet_id = var.subnetIds[0]
   depends_on = [aws_db_instance.db_instance]
+}
+
+resource "aws_eip" "lb" {
+  instance = "${aws_instance.instance.id}"
+  vpc      = true
 }
 
 resource "aws_security_group_rule" "app_only"{
@@ -76,17 +88,12 @@ resource "aws_security_group_rule" "app_only"{
 
 resource"aws_security_group" "databaseSc"{
   name = "database_security_group"
-
-    ingress{
-    from_port = 5432
-    to_port = 5432
-    protocol = "tcp"
-  }
-
+  vpc_id = var.vpcId
 }
 
 resource "aws_security_group" "applicationSc" {
   name = "application_security_group"
+  vpc_id = var.vpcId
   ingress {
     from_port = 22
     to_port = 22
@@ -109,6 +116,12 @@ resource "aws_security_group" "applicationSc" {
     from_port = 3000
     to_port = 3000
     protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 }

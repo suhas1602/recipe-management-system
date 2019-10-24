@@ -28,8 +28,8 @@ const uploadFile = (file) => {
             if (err) {
                 console.log("Error", err);
             } if (data) {
-                // console.log("Upload Success", data.Location);
-                resolve(data.Location);
+                // console.log("Upload Success", data);
+                resolve(data);
             }
         });
     })  

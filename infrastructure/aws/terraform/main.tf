@@ -14,4 +14,11 @@ module "networking" {
 
 module "application" {
   source = "./application"
+
+  public_key_value = var.public_key_value
+  amiId = var.amiId
+  passwd = var.passwd
+  bucketName = var.bucketName
+  subnetIds = module.networking.subnetIds
+  vpcId = module.networking.vpcId
 }

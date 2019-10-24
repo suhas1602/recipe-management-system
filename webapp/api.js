@@ -409,17 +409,23 @@ const createImage = async (req, res) => {
 		}
 		
 		for (const [key, file] of Object.entries(files)) {
-			const s3Location = await s3.uploadFile(file);
+			if(!(file.type === "image/jpeg" || file.type === "image/png")) return res.status(400).json("Uploaded file must be in jpeg or png format.")
+
+			const fileSize = file.size;
+
+			const s3Data = await s3.uploadFile(file);
 			const imageInput = {
 				id: uuid(),
-				imageUrl: s3Location,
+				imageUrl: s3Data.Location,
 				recipeId,
+				md5: s3Data.ETag,
+				size: fileSize,
 			}
 			try {
 				await db.saveImageForRecipe(imageInput);
 				res.status(201).json({
 					id: imageInput.id,
-					url: s3Location,
+					url: s3Data.Location,
 				});
 			}  catch(err) {
 				console.error(err);

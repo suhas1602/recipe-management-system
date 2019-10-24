@@ -166,10 +166,12 @@ const updateRecipeNutritionInformation = async(newNutrition_information, recipeI
 }
 
 const saveImageForRecipe = async (imageInput) => {
-  return await pool.query("INSERT INTO public.recipe_image (id,recipe_id,url) VALUES ($1,$2,$3)", [
+  return await pool.query("INSERT INTO public.recipe_image (id,recipe_id,url,md5,size) VALUES ($1,$2,$3,$4,$5)", [
     imageInput.id,
     imageInput.recipeId,
-    imageInput.imageUrl
+    imageInput.imageUrl,
+    imageInput.md5,
+    imageInput.size,
   ]); 
 }
 
