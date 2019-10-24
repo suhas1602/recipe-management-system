@@ -61,6 +61,7 @@ resource "aws_instance" "instance" {
     volume_size = "20"
     volume_type = "gp2"
   }
+  depends_on = [aws_db_instance.db_instance]
 }
 
 resource "aws_security_group_rule" "app_only"{
