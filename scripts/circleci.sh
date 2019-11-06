@@ -1,6 +1,8 @@
 #!/bin/bash
 pwd
-fileName="$(ls '../' | grep zip)"
+ls -a
+
+fileName="$(ls | grep zip)"
 echo "${fileName}"
 aws s3 cp "../${fileName}" "s3://codedeploy.suhaspasricha.com/${fileName}"
 
