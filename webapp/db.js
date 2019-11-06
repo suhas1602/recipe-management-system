@@ -7,6 +7,31 @@ const pool = new Pool({
   port: process.env.DB_PORT
 });
 
+const createTableIfNotExists = async (tableName) => {
+  const {rows: [result]} = await pool.query ("SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name=$1)", [tableName]);
+  if(!result.exists) {
+    switch(tableName) {
+      case "user": 
+        await pool.query("CREATE TABLE public.user (id uuid PRIMARY KEY, email varchar UNIQUE, firstname varchar, lastname varchar, password varchar, account_created timestamp, account_updated timestamp)");
+        break;
+      case "recipe":
+        await pool.query("CREATE TABLE public.recipe (id uuid PRIMARY KEY, created_ts timestamp, updated_ts timestamp, author_id uuid, cook_time_in_min integer, prep_time_in_min integer, total_time_in_min integer, title varchar, cusine varchar, servings integer, ingredients varchar [], FOREIGN KEY (author_id) REFERENCES public.user (id))");
+        break;
+      case "steps":
+          await pool.query("CREATE TABLE public.steps (id uuid PRIMARY KEY, position integer, items varchar, recipe_id uuid, FOREIGN KEY (recipe_id) REFERENCES public.recipe(id))");
+          break;
+      case "nutrition_information":
+          await pool.query("CREATE TABLE public.nutrition_information (id uuid PRIMARY KEY, calories integer, cholestrol_in_mg float, sodium_in_mg integer, carbohydrates_in_grams float, protein_in_grams float, recipe_id uuid, FOREIGN KEY (recipe_id) REFERENCES public.recipe(id))");
+          break;
+      case "recipe_image":
+          await pool.query("create table public.recipe_image (id uuid primary key,recipe_id uuid,url varchar, md5 varchar, size int, foreign key (recipe_id) references public.recipe(id))");
+          break;
+      default:
+          console.log("No such table required by the app");                      
+    }
+  }
+}
+
 const getAllEmail = async () => {
   const res = await pool.query("SELECT email from public.user");
   return res;
@@ -207,4 +232,5 @@ module.exports = {
   saveImageForRecipe,
   getRecipeImage,
   deleteRecipeImage,
+  createTableIfNotExists,
 }
