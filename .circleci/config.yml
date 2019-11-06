@@ -2,7 +2,39 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/openjdk:8-jdk
+      - image: circleci/python:2.7-jessie-node
     steps:
       - checkout
+      - run:
+          name: apt-get
+          command: sudo apt-get update && sudo apt-get install wget zip unzip -y
+      - run:
+          name: Install awscli
+          command: sudo pip install awscli
+      - run:
+          name: Install node modules
+          command: |
+            pwd
+            ls -al
+            npm install
+            ls -al
+      - run:
+          name: Install mocha
+          command: sudo npm install -g mocha
+      - run:
+          name: Validate tests
+          command: mocha 'tests/test.js'
+      - run:
+          name: Zip artifacts
+          command: |
+            zip -r "csye6225_webapp_$CIRCLE_BUILD_NUM" appspec.yml package.json package-lock.json webapp README.md scripts
+            pwd
+            ls -al
+      - run:
+          name: Add script permission
+          command: chmod +x ./scripts/circleci.sh        
+      -run:
+          name: Upload to S3 and trigger CodeDeploy
+          command: ./scripts/circleci.sh
+
       
