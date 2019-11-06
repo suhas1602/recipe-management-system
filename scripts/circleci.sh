@@ -1,6 +1,6 @@
 #!/bin/bash
 fileName=$(ls "../" | grep zip)
-aws s3 cp "../$fileName" "s3://codedeploy.suhaspasricha.com/$fileName" --profile dev
+aws s3 cp "../$fileName" "s3://codedeploy.suhaspasricha.com/$fileName"
 
 ETag=$(aws s3api head-object --bucket codedeploy.suhaspasricha.com --key $fileName --query ETag --output text)
 
