@@ -1,4 +1,5 @@
 const AWS = require('aws-sdk');
+const s3Bucket = process.env.S3_BUCKET;
 
 // AWS.config.update({region: 'REGION'});
 
@@ -9,7 +10,7 @@ s3 = new AWS.S3({apiVersion: '2006-03-01'});
 const uploadFile = (file) => {
     return new Promise((resolve, reject) => {
         // call S3 to retrieve upload file to specified bucket
-        var uploadParams = {Bucket: "webapp.suhaspasricha.com", Key: '', Body: ''};
+        var uploadParams = {Bucket: s3Bucket, Key: '', Body: ''};
         var filePath = file.path;
         var fileExtension = file.name.split(".")[1];
 
@@ -37,7 +38,7 @@ const uploadFile = (file) => {
 
 const deleteFile = (key) => {
     const params = {
-        Bucket: "webapp.suhaspasricha.com",
+        Bucket: s3Bucket,
         Key: key
     };
 
