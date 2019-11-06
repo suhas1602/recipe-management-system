@@ -19,4 +19,4 @@ deploymentId="${deploymentId%\"}"
 deploymentId="${deploymentId#\"}"
 echo $deploymentId
 
-aws deploy wait deployment-successful --deployment-id $deploymentId
+aws deploy wait deployment-successful --deployment-id $deploymentId --region $AWS_REGION
