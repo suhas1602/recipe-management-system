@@ -1,7 +1,7 @@
-const dotenv = require("dotenv");
+// const dotenv = require("dotenv");
 const express = require("express");
 const bodyParser = require("body-parser");
-dotenv.config();
+// dotenv.config();
 const app = express();
 const port = 3000;
 
