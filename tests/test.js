@@ -3,11 +3,14 @@ const chaiHttp = require("chai-http");
 const sinon = require("sinon");
 
 const db = require("../webapp/db");
-const app = require("../webapp/index");
+
+const createTableIfNotExistsStub = sinon.stub(db, "createTableIfNotExists").callsFake(() => Promise.resolve())
 
 const expect = chai.expect;
 chai.use(chaiHttp);
 chai.should();
+
+const app = require("../webapp/index");
 
 describe("Create user", function() {
     describe("Password does not meet criteria", function() {
