@@ -37,4 +37,6 @@
 
 ## CI/CD
 
+1. CircleCI build is handled by config.yml in .config directory
+2. CodeDeploy steps are defined in appspec.yml
 
