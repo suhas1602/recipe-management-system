@@ -118,9 +118,13 @@ resource "aws_iam_role" "CodeDeployServiceRole" {
   EOF
 }
 
-resource "aws_iam_role_policy_attachment" "codedeploy-EC2-role-policy-attach" {
+resource "aws_iam_role_policy_attachment" "EC2RoleS3PolicyAttach" {
   role       = "${aws_iam_role.CodeDeployEC2ServiceRole.name}"
   policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+}
+resource "aws_iam_role_policy_attachment" "EC2RoleCloudWatchPolicyAttach" {
+  role       = "${aws_iam_role.CodeDeployEC2ServiceRole.name}"
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 }
 resource "aws_iam_role_policy_attachment" "codedeploy-role-policy-attach" {
   role       = "${aws_iam_role.CodeDeployServiceRole.name}"
@@ -167,6 +171,16 @@ resource "aws_instance" "instance" {
   }
   subnet_id = var.subnetIds[0]
   iam_instance_profile="${aws_iam_instance_profile.CodeDeployEC2ServiceProfile.name}"
+  user_data = <<-EOT
+#! /bin/bash
+cd /home/centos
+echo "export DB_USER=dbuser" >> .bashrc
+echo "export DB_PASSWORD=suhabhi71" >> .bashrc
+echo "export DB_DATABASE_NAME=csye6225" >> .bashrc
+echo "export DB_HOST_NAME=${aws_db_instance.db_instance.address}" >> .bashrc
+echo "export DB_PORT=5432" >> .bashrc
+echo "export S3_BUCKET=${var.bucketName}" >> .bashrc
+EOT
   tags = {
     Name = "Webserver"
   }

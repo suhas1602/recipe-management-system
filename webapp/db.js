@@ -200,6 +200,12 @@ const saveImageForRecipe = async (imageInput) => {
   ]); 
 }
 
+const getAllImagesForRecipe = async (recipeId) => {
+  return await pool.query("SELECT * FROM public.recipe_image WHERE recipe_id=$1", [
+    recipeId,
+  ]);
+}
+
 const getRecipeImage = async (recipeId, imageId) => {
   return await pool.query("SELECT * FROM public.recipe_image WHERE recipe_id=$1 AND id=$2", [
     recipeId,
@@ -233,4 +239,5 @@ module.exports = {
   getRecipeImage,
   deleteRecipeImage,
   createTableIfNotExists,
+  getAllImagesForRecipe
 }

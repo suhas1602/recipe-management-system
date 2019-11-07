@@ -2,6 +2,18 @@
 // const dotenv = require("dotenv");
 // dotenv.config();
 
+const path = require('path');
+
+const winston = require('winston');
+
+const directory = __dirname.split("/").slice(0, __dirname.split("/").length - 1).join("/")
+const logger = winston.createLogger({
+  transports: [
+    // new winston.transports.Console(),
+    new winston.transports.File({ filename: path.join(directory,'./csye6225.log' )})
+  ]
+});
+
 const express = require("express");
 const bodyParser = require("body-parser");
 const app = express();
@@ -9,6 +21,11 @@ const port = 3000;
 
 const api = require("./api");
 const db = require("./db");
+
+logger.log({
+  level: 'info',
+  message: 'App started'
+});
 
 const tables = ["user", "recipe", "steps", "nutrition_information", "recipe_image"];
 
@@ -34,6 +51,11 @@ const createTables = () => new Promise(async (resolve, reject) => {
 });
 
 createTables().then(() => {
+  logger.log({
+    level: 'info',
+    message: 'Table creation step successful'
+  });
+
   app.use(unless([
     {path: '/v1/user', method: 'POST'}, 
     {path: '/v1/recipe', method: 'GET'}
@@ -45,6 +67,8 @@ createTables().then(() => {
       extended: true,
     })
   );
+
+  app.use(api.logResponseTime);
   
   app.get("/", (request, response) => {
     response.json({ info: "Node.js, Express, and Postgres API" });
@@ -66,8 +90,7 @@ createTables().then(() => {
     console.log(`App running on port ${port}.`);
   });
 }).catch(error => {
-  console.log(error);
-  console.log("Could not create tables. Cannot start app.")
+  logger.error("Could not create tables. Application stop", error);
 });
 
 module.exports = app;

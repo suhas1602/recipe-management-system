@@ -1,3 +1,17 @@
+const StatsD = require("node-statsd"),
+	client = new StatsD();
+const winston = require('winston');
+const path = require("path");
+
+const directory = __dirname.split("/").slice(0, __dirname.split("/").length - 1).join("/")
+const logger = winston.createLogger({
+  transports: [
+    // new winston.transports.Console(),
+    new winston.transports.File({ filename: path.join(directory,'./csye6225.log' )})
+  ]
+});
+
+
 const uuid = require("uuid");
 const bcrypt = require("bcrypt");
 const Joi = require('joi');
@@ -7,6 +21,19 @@ const saltRounds = 10;
 
 const db = require("./db");
 const s3 = require("./s3");
+
+function logResponseTime(req, res, next) {
+	const startHrTime = process.hrtime();
+  
+	res.on("finish", () => {
+	  const elapsedHrTime = process.hrtime(startHrTime);
+	  const elapsedTimeInMs = elapsedHrTime[0] * 1000 + elapsedHrTime[1] / 1e6;
+	  logger.info(`${req.path} executed in ${elapsedTimeInMs} ms`);
+	  client.timing('api_execution_time', elapsedTimeInMs);
+	});
+  
+	next();
+  }
 
 const checkPassword = (password) => {
 	if(password.length <= 8) return false;
@@ -23,6 +50,7 @@ const checkPassword = (password) => {
 const checkEmail = (email) =>  (/[a-zA-Z0-9_\.\+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-\.]+/.test(email));
 
 const authorizeMiddleware = async (req, res, next) => {
+	logger.info("checking for authentication");
 	const auth = req.get('Authorization');
 
 	if(lodash.isEmpty(auth)) return res.sendStatus(401);
@@ -48,12 +76,16 @@ const authorizeMiddleware = async (req, res, next) => {
 	} else {
 	 return res.status(401).json("Unauthorized");
 	}
-  
-	 next();
+
+	logger.info("authentication successful");  
+	next();
   }
     
 
 const createUser = async (request, response) => {
+	client.increment('create_user');
+	logger.info(`Create user with request body ${JSON.stringify(request.body)}`);
+
 	const email = request.body.email;
 	const firstname = request.body.firstname;
 	const lastname = request.body.lastname;
@@ -83,6 +115,8 @@ const createUser = async (request, response) => {
 
 	await db.createUser(createUserInput);
 
+	logger.info("create user successful");
+
 	response.status(201).json({
 		id: createUserInput.id,
 		email,
@@ -94,9 +128,13 @@ const createUser = async (request, response) => {
 }
 
 const getUserDetails = async (req, res) => {
+	client.increment('get_user_details');
+	logger.info(`get user details for ${res.locals.email}`);
 	const email = res.locals.email;
 
 	const {rows: [user]} = await db.getUserDetails(email);
+
+	logger.info(`fetched user details ${JSON.stringify(user)}`);
 
 	res.status(200).send({
 		id: user.id,
@@ -109,6 +147,8 @@ const getUserDetails = async (req, res) => {
 }
 
 const updateUserDetails = async (req, res) => {
+	client.increment('update_details');
+	logger.info(`update user details for ${res.locals.email} with request body ${JSON.stringify(req.body)}`);
 	const email = res.locals.email;
 
 	const schema = {
@@ -144,6 +184,8 @@ const updateUserDetails = async (req, res) => {
 		newPassword,
 		account_updated: now,
 	}
+
+	logger.info(`user details updated`);
     
 	db.updateUserDetails(updateUserDetailsInput).then(() => {
         res.sendStatus(204);
@@ -240,12 +282,17 @@ const getRecipeDetails = async (req, res) => {
     const {rows: recipeDetails} = await db.getRecipeDetails(id);
     const {rows: recipeSteps} = await db.getRecipeSteps(id);
 	const {rows: recipeNutritionInformaiton} = await db.getRecipeNutritionInformation(id);
+	const {rows: imageDetails} = await db.getAllImagesForRecipe(id)
 
     if(lodash.isEmpty(recipeDetails)) return res.sendStatus(404);
 
     const recipe = recipeDetails[0];
 
     res.status(200).send({
+			image: !lodash.isEmpty(imageDetails) && imageDetails.length > 0 ? {
+				id: imageDetails[imageDetails.length -1].id,
+				url: imageDetails[imageDetails.length -1].url,
+			} : null,
 		    id: recipe.id,
 			created_ts: recipe.created_ts,
 			updated_ts: recipe.updated_ts,
@@ -486,4 +533,5 @@ module.exports = {
 	createImage,
 	getImage,
 	deleteRecipeImage,
+	logResponseTime,
 };
