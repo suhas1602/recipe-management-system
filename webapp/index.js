@@ -67,6 +67,8 @@ createTables().then(() => {
       extended: true,
     })
   );
+
+  app.use(api.logResponseTime);
   
   app.get("/", (request, response) => {
     response.json({ info: "Node.js, Express, and Postgres API" });

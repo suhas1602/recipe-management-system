@@ -22,6 +22,19 @@ const saltRounds = 10;
 const db = require("./db");
 const s3 = require("./s3");
 
+function logResponseTime(req, res, next) {
+	const startHrTime = process.hrtime();
+  
+	res.on("finish", () => {
+	  const elapsedHrTime = process.hrtime(startHrTime);
+	  const elapsedTimeInMs = elapsedHrTime[0] * 1000 + elapsedHrTime[1] / 1e6;
+	  logger.info(`${req.path} executed in ${elapsedTimeInMs} ms`);
+	  client.timing('api_execution_time', elapsedTimeInMs);
+	});
+  
+	next();
+  }
+
 const checkPassword = (password) => {
 	if(password.length <= 8) return false;
 	const hasUpperCase = /[A-Z]/.test(password);
@@ -520,4 +533,5 @@ module.exports = {
 	createImage,
 	getImage,
 	deleteRecipeImage,
+	logResponseTime,
 };
