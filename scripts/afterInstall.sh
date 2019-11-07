@@ -7,6 +7,12 @@ sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
     -m ec2 \
     -c file:/home/centos/webserver/cloudwatch-config.json \
     -s
-sudo chown centos csye6225.log
+
+if [! -f "/home/centos/webserver/webapp/csye6225.log" ]
+then
+    touch "/home/centos/webserver/webapp/csye6225.log"
+fi
+
+sudo chown centos "/home/centos/webserver/webapp/csye6225.log"
 sudo chmod 664 csye6225.log    
-forever start "webapp/index.js"
+forever start "/home/centos/webserver/webapp/index.js"
