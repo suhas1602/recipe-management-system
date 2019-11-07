@@ -6,10 +6,11 @@ const path = require('path');
 
 const winston = require('winston');
 
+const directory = __dirname.split("/").slice(0, __dirname.split("/").length - 1).join("/")
 const logger = winston.createLogger({
   transports: [
     // new winston.transports.Console(),
-    new winston.transports.File({ filename: path.join(__dirname,'./csye6225.log' )})
+    new winston.transports.File({ filename: path.join(directory,'./csye6225.log' )})
   ]
 });
 
