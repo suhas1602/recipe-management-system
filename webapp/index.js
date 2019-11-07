@@ -1,6 +1,15 @@
 // Comment these two lines before checking in
-// const dotenv = require("dotenv");
-// dotenv.config();
+const dotenv = require("dotenv");
+dotenv.config();
+
+const winston = require('winston');
+
+const logger = winston.createLogger({
+  transports: [
+    // new winston.transports.Console(),
+    new winston.transports.File({ filename: '/var/tmp/csye6225.log' })
+  ]
+});
 
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -9,6 +18,11 @@ const port = 3000;
 
 const api = require("./api");
 const db = require("./db");
+
+logger.log({
+  level: 'info',
+  message: 'App started'
+});
 
 const tables = ["user", "recipe", "steps", "nutrition_information", "recipe_image"];
 
@@ -34,6 +48,11 @@ const createTables = () => new Promise(async (resolve, reject) => {
 });
 
 createTables().then(() => {
+  logger.log({
+    level: 'info',
+    message: 'Table creation step successful'
+  });
+
   app.use(unless([
     {path: '/v1/user', method: 'POST'}, 
     {path: '/v1/recipe', method: 'GET'}

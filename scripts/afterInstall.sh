@@ -7,4 +7,4 @@ sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
     -m ec2 \
     -c file:/home/centos/webserver/cloudwatch-config.json \
     -s
-sudo node webapp/index.js > /dev/null 2> /dev/null < /dev/null &
+forever start "webapp/index.js"

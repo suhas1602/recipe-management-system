@@ -1,3 +1,12 @@
+const winston = require('winston');
+
+const logger = winston.createLogger({
+  transports: [
+    // new winston.transports.Console(),
+    new winston.transports.File({ filename: '/var/tmp/csye6225.log' })
+  ]
+});
+
 const uuid = require("uuid");
 const bcrypt = require("bcrypt");
 const Joi = require('joi');
@@ -23,6 +32,7 @@ const checkPassword = (password) => {
 const checkEmail = (email) =>  (/[a-zA-Z0-9_\.\+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-\.]+/.test(email));
 
 const authorizeMiddleware = async (req, res, next) => {
+	logger.info("checking for authentication");
 	const auth = req.get('Authorization');
 
 	if(lodash.isEmpty(auth)) return res.sendStatus(401);
@@ -48,12 +58,15 @@ const authorizeMiddleware = async (req, res, next) => {
 	} else {
 	 return res.status(401).json("Unauthorized");
 	}
-  
-	 next();
+
+	logger.info("authentication successful");  
+	next();
   }
     
 
 const createUser = async (request, response) => {
+	logger.info(`Create user with request body ${JSON.stringify(request.body)}`);
+
 	const email = request.body.email;
 	const firstname = request.body.firstname;
 	const lastname = request.body.lastname;
@@ -83,6 +96,8 @@ const createUser = async (request, response) => {
 
 	await db.createUser(createUserInput);
 
+	logger.info("create user successful");
+
 	response.status(201).json({
 		id: createUserInput.id,
 		email,
@@ -94,9 +109,12 @@ const createUser = async (request, response) => {
 }
 
 const getUserDetails = async (req, res) => {
+	logger.info(`get user details for ${res.locals.email}`);
 	const email = res.locals.email;
 
 	const {rows: [user]} = await db.getUserDetails(email);
+
+	logger.info(`fetched user details ${JSON.stringify(user)}`);
 
 	res.status(200).send({
 		id: user.id,
@@ -109,6 +127,7 @@ const getUserDetails = async (req, res) => {
 }
 
 const updateUserDetails = async (req, res) => {
+	logger.info(`update user details for ${res.locals.email} with request body ${JSON.stringify(req.body)}`);
 	const email = res.locals.email;
 
 	const schema = {
@@ -144,6 +163,8 @@ const updateUserDetails = async (req, res) => {
 		newPassword,
 		account_updated: now,
 	}
+
+	logger.info(`user details updated`);
     
 	db.updateUserDetails(updateUserDetailsInput).then(() => {
         res.sendStatus(204);
