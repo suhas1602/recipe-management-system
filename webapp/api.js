@@ -264,12 +264,17 @@ const getRecipeDetails = async (req, res) => {
     const {rows: recipeDetails} = await db.getRecipeDetails(id);
     const {rows: recipeSteps} = await db.getRecipeSteps(id);
 	const {rows: recipeNutritionInformaiton} = await db.getRecipeNutritionInformation(id);
+	const {rows: imageDetails} = await db.getAllImagesForRecipe(id)
 
     if(lodash.isEmpty(recipeDetails)) return res.sendStatus(404);
 
     const recipe = recipeDetails[0];
 
     res.status(200).send({
+			image: !lodash.isEmpty(imageDetails) && imageDetails.length > 0 ? {
+				id: imageDetails[imageDetails.length -1].id,
+				url: imageDetails[imageDetails.length -1].url,
+			} : null,
 		    id: recipe.id,
 			created_ts: recipe.created_ts,
 			updated_ts: recipe.updated_ts,

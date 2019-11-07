@@ -11,7 +11,7 @@ variable "public_key_value"{
 }
 
 variable "amiId" {
-  default = "ami-0d12b7c257e594f55"
+  default = "ami-01f672ef287e11e36"
 }
 
 variable "passwd" {
