@@ -167,6 +167,16 @@ resource "aws_instance" "instance" {
   }
   subnet_id = var.subnetIds[0]
   iam_instance_profile="${aws_iam_instance_profile.CodeDeployEC2ServiceProfile.name}"
+  user_data = <<-EOT
+#! /bin/bash
+cd /home/centos
+echo "export DB_USER=dbuser" >> .bashrc
+echo "export DB_PASSWORD=suhabhi71" >> .bashrc
+echo "export DB_DATABASE_NAME=csye6225" >> .bashrc
+echo "export DB_HOST_NAME=${aws_db_instance.db_instance.address}" >> .bashrc
+echo "export DB_PORT=5432" >> .bashrc
+echo "export S3_BUCKET=${var.bucketName}" >> .bashrc
+EOT
   tags = {
     Name = "Webserver"
   }
