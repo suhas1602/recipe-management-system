@@ -27,7 +27,7 @@ jobs:
       - run:
           name: Zip artifacts
           command: |
-            zip -r "csye6225_webapp_$CIRCLE_BUILD_NUM" appspec.yml package.json package-lock.json webapp README.md scripts
+            zip -r "csye6225_webapp_$CIRCLE_BUILD_NUM" appspec.yml package.json package-lock.json webapp README.md cloudwatch-config.json scripts
             pwd
             ls -al
       - run:
