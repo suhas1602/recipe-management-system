@@ -118,9 +118,13 @@ resource "aws_iam_role" "CodeDeployServiceRole" {
   EOF
 }
 
-resource "aws_iam_role_policy_attachment" "codedeploy-EC2-role-policy-attach" {
+resource "aws_iam_role_policy_attachment" "EC2RoleS3PolicyAttach" {
   role       = "${aws_iam_role.CodeDeployEC2ServiceRole.name}"
   policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+}
+resource "aws_iam_role_policy_attachment" "EC2RoleCloudWatchPolicyAttach" {
+  role       = "${aws_iam_role.CodeDeployEC2ServiceRole.name}"
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 }
 resource "aws_iam_role_policy_attachment" "codedeploy-role-policy-attach" {
   role       = "${aws_iam_role.CodeDeployServiceRole.name}"

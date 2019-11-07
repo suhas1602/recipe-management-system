@@ -88,8 +88,7 @@ createTables().then(() => {
     console.log(`App running on port ${port}.`);
   });
 }).catch(error => {
-  console.log(error);
-  console.log("Could not create tables. Cannot start app.")
+  logger.error("Could not create tables. Application stop", error);
 });
 
 module.exports = app;
