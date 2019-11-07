@@ -6,5 +6,5 @@ then
         echo "\$PID is empty"
 else
         echo "\$PID is NOT empty"
-        forever stop $PID
+        kill -9 $PID
 fi

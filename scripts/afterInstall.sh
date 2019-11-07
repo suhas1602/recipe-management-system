@@ -1,4 +1,4 @@
 #!/bin/bash
 cd "/home/centos/webserver"
 npm install
-forever start "webapp/index.js"
+node webapp/index.js > /dev/null 2> /dev/null < /dev/null &
