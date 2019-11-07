@@ -1,3 +1,5 @@
+const StatsD = require("node-statsd"),
+	client = new StatsD();
 const winston = require('winston');
 const path = require("path");
 
@@ -68,6 +70,7 @@ const authorizeMiddleware = async (req, res, next) => {
     
 
 const createUser = async (request, response) => {
+	client.increment('create_user');
 	logger.info(`Create user with request body ${JSON.stringify(request.body)}`);
 
 	const email = request.body.email;
@@ -112,6 +115,7 @@ const createUser = async (request, response) => {
 }
 
 const getUserDetails = async (req, res) => {
+	client.increment('get_user_details');
 	logger.info(`get user details for ${res.locals.email}`);
 	const email = res.locals.email;
 
@@ -130,6 +134,7 @@ const getUserDetails = async (req, res) => {
 }
 
 const updateUserDetails = async (req, res) => {
+	client.increment('update_details');
 	logger.info(`update user details for ${res.locals.email} with request body ${JSON.stringify(req.body)}`);
 	const email = res.locals.email;
 
