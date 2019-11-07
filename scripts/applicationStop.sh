@@ -1,5 +1,5 @@
 #!/bin/bash
-ID=$(pm2 list | awk '/ncsye6225-webapp/ {print $2}')
+ID=$(pm2 list | awk '/csye6225-webapp/ {print $2}')
 echo $ID
 if [ -z "$ID" ]
 then

@@ -16,7 +16,7 @@ fi
 
 sudo chown centos "/home/centos/webserver/csye6225.log"
 sudo chmod 664 csye6225.log   
-source /etc/environment
+source /home/centos/.bashrc
 echo $DB_USER
 echo $DB_HOST_NAME 
 pm2 start "/home/centos/webserver/webapp/index.js" --name="csye6225-webapp"
