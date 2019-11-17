@@ -139,9 +139,9 @@ resource "aws_iam_role_policy_attachment" "EC2RoleCloudWatchPolicyAttach" {
   role       = "${aws_iam_role.CodeDeployEC2ServiceRole.name}"
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 }
-resource "aws_iam_role_policy_attachment" "EC2RoleSESPolicyAttach" {
+resource "aws_iam_role_policy_attachment" "EC2RoleSNSPolicyAttach" {
   role       = "${aws_iam_role.CodeDeployEC2ServiceRole.name}"
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSESFullAccess"
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSNSFullAccess"
 }
 resource "aws_iam_role_policy_attachment" "codedeploy-role-policy-attach" {
   role       = "${aws_iam_role.CodeDeployServiceRole.name}"

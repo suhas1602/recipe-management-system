@@ -16,7 +16,7 @@ const AWS = require("aws-sdk")
 // const credentials = new AWS.SharedIniFileCredentials({profile: "default"});
 
 // AWS.config.credentials = credentials;
-// AWS.config.update({region: "us-east-1"});
+AWS.config.update({region: "us-east-1"});
 
 
 const uuid = require("uuid");
@@ -555,7 +555,7 @@ const fetchMyRecipes = async (req,res) => {
 
 	const snsMessage = {
 		user: email,
-		links: recipeDetails.map(id => `https://suhaspasricha.com/v1/recipe/${id}`),
+		links: recipeDetails.map(({id}) => `https://suhaspasricha.com/v1/recipe/${id}`),
 	};
 
 	const params = {
