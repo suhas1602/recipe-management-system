@@ -81,6 +81,7 @@ createTables().then(() => {
   app.get("/v1/recipe/:id", api.getRecipeDetails);
   app.delete("/v1/recipe/:id", api.deleteRecipe);
   app.put("/v1/recipe/:id", api.updateRecipe);
+  app.post("/v1/myrecipes", api.fetchMyRecipes);
   
   app.post("/v1/recipe/:id/image", api.createImage);
   app.get("/v1/recipe/:recipeId/image/:imageId", api.getImage);

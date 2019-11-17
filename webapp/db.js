@@ -144,7 +144,9 @@ const getRecipeNutritionInformation = async (id) => {
   return res;
 }
 
-const deleteRecipe = async (id) => {
+const deleteRecipe = async (recipeId) => {
+  await pool.query("DELETE FROM public.recipe_image WHERE recipe_id=$1", [recipeId]);
+
   await pool.query("DELETE FROM public.nutrition_information WHERE recipe_id=$1", [id]);
 
   await pool.query("DELETE FROM public.steps WHERE recipe_id=$1", [id]);
@@ -220,6 +222,10 @@ const deleteRecipeImage = async (recipeId, imageId) => {
   ]);
 }
 
+const getAllRecipesForUser = async (userId) => {
+  return await pool.query("SELECT id FROM public.recipe WHERE author_id=$1", [userId]);
+}
+
 module.exports = {
   getAllEmail,
   createUser,
@@ -239,5 +245,6 @@ module.exports = {
   getRecipeImage,
   deleteRecipeImage,
   createTableIfNotExists,
-  getAllImagesForRecipe
+  getAllImagesForRecipe,
+  getAllRecipesForUser,
 }

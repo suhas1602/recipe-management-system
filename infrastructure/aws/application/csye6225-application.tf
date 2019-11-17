@@ -69,6 +69,19 @@ resource "aws_s3_bucket" "Codedeploy_instance" {
   }
 }
 
+resource "aws_s3_bucket" "Lambda_instance" {
+  bucket = var.lambdaBucketName
+  acl = "private"
+  force_destroy = true
+    server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        sse_algorithm     = "aws:kms"
+      }
+    }
+  }
+}
+
 resource "aws_dynamodb_table" "app_dynamo_table"{
   name = "csye6225"
   hash_key = "Id"
@@ -126,6 +139,10 @@ resource "aws_iam_role_policy_attachment" "EC2RoleCloudWatchPolicyAttach" {
   role       = "${aws_iam_role.CodeDeployEC2ServiceRole.name}"
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 }
+resource "aws_iam_role_policy_attachment" "EC2RoleSESPolicyAttach" {
+  role       = "${aws_iam_role.CodeDeployEC2ServiceRole.name}"
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSESFullAccess"
+}
 resource "aws_iam_role_policy_attachment" "codedeploy-role-policy-attach" {
   role       = "${aws_iam_role.CodeDeployServiceRole.name}"
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
@@ -158,6 +175,34 @@ resource "aws_codedeploy_deployment_group" "example" {
     events  = ["DEPLOYMENT_FAILURE"]
   }
 }
+
+resource "aws_sns_topic" "MyRecipesLambdaTopic" {
+  name = "email_request"
+}
+
+resource "aws_lambda_function" "MyRecipesLambda" {
+  filename      = "../csye6225-fa19-lambda.zip"
+  function_name = "MyRecipesLinks"
+  role          = "arn:aws:iam::467217763981:role/csye6225-lambda-role"
+  handler       = "index.handler"
+
+  runtime = "nodejs10.x"
+}
+
+resource "aws_sns_topic_subscription" "MyRecipesLambdaTrigger" {
+  topic_arn = "${aws_sns_topic.MyRecipesLambdaTopic.arn}"
+  protocol  = "lambda"
+  endpoint  = "${aws_lambda_function.MyRecipesLambda.arn}"
+}
+
+resource "aws_lambda_permission" "with_sns" {
+    statement_id = "AllowExecutionFromSNS"
+    action = "lambda:InvokeFunction"
+    function_name = "${aws_lambda_function.MyRecipesLambda.arn}"
+    principal = "sns.amazonaws.com"
+    source_arn = "${aws_sns_topic.MyRecipesLambdaTopic.arn}"
+}
+
 
 resource "aws_instance" "instance" {
   ami           = var.amiId
@@ -202,7 +247,7 @@ resource "aws_security_group_rule" "app_only"{
 
 }
 
-resource"aws_security_group" "databaseSc"{
+resource "aws_security_group" "databaseSc"{
   name = "database_security_group"
   vpc_id = var.vpcId
 }

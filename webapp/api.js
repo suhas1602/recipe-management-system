@@ -11,6 +11,13 @@ const logger = winston.createLogger({
   ]
 });
 
+const AWS = require("aws-sdk")
+
+// const credentials = new AWS.SharedIniFileCredentials({profile: "default"});
+
+// AWS.config.credentials = credentials;
+// AWS.config.update({region: "us-east-1"});
+
 
 const uuid = require("uuid");
 const bcrypt = require("bcrypt");
@@ -427,11 +434,27 @@ const deleteRecipe = async (req, res) => {
 
 	const {rows: recipeDetails} = await db.getRecipeDetails(recipeId);
 
+	const {rows: imageDetails} = await db.getAllImagesForRecipe(id)
+
 	if(lodash.isEmpty(recipeDetails)) return res.sendStatus(404);
 
 	if(user.id !== recipeDetails[0].author_id) return res.sendStatus(401);
 
-	await db.deleteRecipe(recipeId);
+	try {
+		await db.deleteRecipe(recipeId);
+
+		if(!lodash.isEmpty(imageDetails) && imageDetails.length > 0) {
+			await Promise.all(imageDetails.map(async ({ url }) => {
+				const urlPath = url.split("/");
+				const s3Key = urlPath[urlPath.length - 1];
+				await s3.deleteFile(s3Key);
+			}));
+		} 
+
+	} catch(err) {
+		console.log(err);
+		return res.sendStatus(500);
+	}
 
 	res.sendStatus(204);
 }
@@ -521,6 +544,36 @@ const deleteRecipeImage = async (req,res) => {
 	}
 }
 
+const fetchMyRecipes = async (req,res) => {
+	const email = res.locals.email;
+
+	const {rows: [user]} = await db.getUserDetails(email);
+
+	const {rows: recipeDetails} = await db.getAllRecipesForUser(user.id);	
+
+	if(lodash.isEmpty(recipeDetails)) return res.status(404).json("No recipes found for this user");
+
+	const snsMessage = {
+		user: email,
+		links: recipeDetails.map(id => `https://suhaspasricha.com/v1/recipe/${id}`),
+	};
+
+	const params = {
+		Message: JSON.stringify(snsMessage),
+		TopicArn: "arn:aws:sns:us-east-1:467217763981:email_request"
+	};
+	
+	const publishTextPromise = new AWS.SNS({apiVersion: "2010-03-31"}).publish(params).promise();
+	
+	publishTextPromise.then((data) => {
+		console.log(`Message ${params.Message} sent to the topic ${params.TopicArn}`);
+		console.log("MessageID is " + data.MessageId);
+		return res.status(200).json("Request received");
+	}).catch((err) => {
+		console.error(err, err.stack);	
+	});
+}
+
 module.exports = {
 	authorizeMiddleware,
 	createUser,
@@ -533,5 +586,6 @@ module.exports = {
 	createImage,
 	getImage,
 	deleteRecipeImage,
+	fetchMyRecipes,
 	logResponseTime,
 };

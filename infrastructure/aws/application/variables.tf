@@ -23,13 +23,17 @@ variable "bucketName" {
 }
 
 variable "subnetIds" {
-  default = ["subnet-01fbea79f4e99f507","subnet-0338f193a10c502a1","subnet-06a0850335cce24c0"]
+  default = ["subnet-01098b21238209ca8","subnet-09de0b7b8ebc6fb0e","subnet-0e298bc02e5dfdad9"]
 }
 
 variable "vpcId" {
-  default = "vpc-06f8d5289cd439275"
+  default = "vpc-051e27af679c7b395"
 }
 
 variable "codedeployBucketName" {
   default = "codedeploy.suhaspasricha.com"
+}
+
+variable "lambdaBucketName" {
+  default = "lambda.suhaspasricha.com"
 }
