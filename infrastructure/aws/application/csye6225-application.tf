@@ -92,6 +92,11 @@ resource "aws_dynamodb_table" "app_dynamo_table"{
     type = "S"
   }
 
+  ttl {
+    attribute_name = "TimeToExist"
+    enabled        = true
+  }
+
 }
 
 resource "aws_iam_role" "CodeDeployEC2ServiceRole" {
@@ -204,18 +209,42 @@ resource "aws_lambda_permission" "with_sns" {
 }
 
 
-resource "aws_instance" "instance" {
-  ami           = var.amiId
+// resource "aws_instance" "instance" {
+//   ami           = var.amiId
+//   instance_type = "t2.micro"
+//   key_name = "${aws_key_pair.publicKey.key_name}"
+//   vpc_security_group_ids = ["${aws_security_group.applicationSc.id}"]
+//   disable_api_termination = false 
+//   root_block_device {
+//     volume_size = "20"
+//     volume_type = "gp2"
+//   }
+//   subnet_id = var.subnetIds[0]
+//   iam_instance_profile="${aws_iam_instance_profile.CodeDeployEC2ServiceProfile.name}"
+//   user_data = <<-EOT
+// #! /bin/bash
+// cd /home/centos
+// echo "export DB_USER=dbuser" >> .bashrc
+// echo "export DB_PASSWORD=suhabhi71" >> .bashrc
+// echo "export DB_DATABASE_NAME=csye6225" >> .bashrc
+// echo "export DB_HOST_NAME=${aws_db_instance.db_instance.address}" >> .bashrc
+// echo "export DB_PORT=5432" >> .bashrc
+// echo "export S3_BUCKET=${var.bucketName}" >> .bashrc
+// EOT
+//   tags = {
+//     Name = "Webserver"
+//   }
+//   depends_on = [aws_db_instance.db_instance]
+// }
+
+resource "aws_launch_configuration" "AutoScalingLaunchConfig" {
+  name_prefix   = "asg_launch_config-"
+  image_id      = var.amiId
   instance_type = "t2.micro"
   key_name = "${aws_key_pair.publicKey.key_name}"
-  vpc_security_group_ids = ["${aws_security_group.applicationSc.id}"]
-  disable_api_termination = false 
-  root_block_device {
-    volume_size = "20"
-    volume_type = "gp2"
-  }
-  subnet_id = var.subnetIds[0]
+  associate_public_ip_address = true
   iam_instance_profile="${aws_iam_instance_profile.CodeDeployEC2ServiceProfile.name}"
+  security_groups = ["${aws_security_group.applicationSc.id}"]
   user_data = <<-EOT
 #! /bin/bash
 cd /home/centos
@@ -226,16 +255,54 @@ echo "export DB_HOST_NAME=${aws_db_instance.db_instance.address}" >> .bashrc
 echo "export DB_PORT=5432" >> .bashrc
 echo "export S3_BUCKET=${var.bucketName}" >> .bashrc
 EOT
-  tags = {
-    Name = "Webserver"
+
+  lifecycle {
+    create_before_destroy = true
   }
+}
+
+resource "aws_autoscaling_policy" "AutoScalingIncrementPolicy" {
+  name                   = "asg-increment-policy"
+  policy_type            = "StepScaling"
+  metric_aggregation_type = "Average"
+  adjustment_type = "ChangeInCapacity"
+  step_adjustment {
+    scaling_adjustment          = 1
+    metric_interval_lower_bound = 90.0
+  }
+  autoscaling_group_name = "${aws_autoscaling_group.AutoScalingGroup.name}"
+}
+
+resource "aws_autoscaling_policy" "AutoScalingDecrementPolicy" {
+  name                   = "asg-decrement-policy"
+  policy_type            = "StepScaling"
+  metric_aggregation_type = "Average"
+  adjustment_type = "ChangeInCapacity"
+  step_adjustment {
+    scaling_adjustment          = -1
+    metric_interval_upper_bound = 70.0
+  }
+  autoscaling_group_name = "${aws_autoscaling_group.AutoScalingGroup.name}"
+}
+
+resource "aws_autoscaling_group" "AutoScalingGroup" {
+  max_size = 10
+  min_size = 3
+  launch_configuration = "${aws_launch_configuration.AutoScalingLaunchConfig.name}"
+  vpc_zone_identifier = var.subnetIds
+  tag {
+    key = "Name"
+    value = "Webserver"
+    propagate_at_launch = true
+  }
+
   depends_on = [aws_db_instance.db_instance]
 }
 
-resource "aws_eip" "lb" {
-  instance = "${aws_instance.instance.id}"
-  vpc      = true
-}
+// resource "aws_eip" "lb" {
+//   instance = "${aws_instance.instance.id}"
+//   vpc      = true
+// }
 
 resource "aws_security_group_rule" "app_only"{
   type = "ingress"
@@ -244,7 +311,6 @@ resource "aws_security_group_rule" "app_only"{
   protocol = "tcp"
   security_group_id = "${aws_security_group.databaseSc.id}"
   source_security_group_id = "${aws_security_group.applicationSc.id}"
-
 }
 
 resource "aws_security_group" "databaseSc"{
