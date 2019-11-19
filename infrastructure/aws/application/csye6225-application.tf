@@ -262,27 +262,56 @@ EOT
 }
 
 resource "aws_autoscaling_policy" "AutoScalingIncrementPolicy" {
-  name                   = "asg-increment-policy"
-  policy_type            = "StepScaling"
-  metric_aggregation_type = "Average"
-  adjustment_type = "ChangeInCapacity"
-  step_adjustment {
-    scaling_adjustment          = 1
-    metric_interval_lower_bound = 90.0
-  }
+  name                   = "WebServerScaleUpPolicy"
+  scaling_adjustment     = 1
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 300
   autoscaling_group_name = "${aws_autoscaling_group.AutoScalingGroup.name}"
 }
 
-resource "aws_autoscaling_policy" "AutoScalingDecrementPolicy" {
-  name                   = "asg-decrement-policy"
-  policy_type            = "StepScaling"
-  metric_aggregation_type = "Average"
-  adjustment_type = "ChangeInCapacity"
-  step_adjustment {
-    scaling_adjustment          = -1
-    metric_interval_upper_bound = 70.0
+resource "aws_cloudwatch_metric_alarm" "HighUtilizationAlarm" {
+  alarm_name          = "CPUAlarmHigh"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = "300"
+  statistic           = "Average"
+  threshold           = "90"
+
+  dimensions = {
+    AutoScalingGroupName = "${aws_autoscaling_group.AutoScalingGroup.name}"
   }
+
+  alarm_description = "This metric monitors ec2 high cpu utilization"
+  alarm_actions     = ["${aws_autoscaling_policy.AutoScalingIncrementPolicy.arn}"]
+}
+
+
+resource "aws_autoscaling_policy" "AutoScalingDecrementPolicy" {
+  name                   = "WebServerScaleDownPolicy"
+  scaling_adjustment     = -1
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 300
   autoscaling_group_name = "${aws_autoscaling_group.AutoScalingGroup.name}"
+}
+
+resource "aws_cloudwatch_metric_alarm" "LowUtilizationAlarm" {
+  alarm_name          = "CPUAlarmLow"
+  comparison_operator = "LessThanOrEqualToThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = "300"
+  statistic           = "Average"
+  threshold           = "70"
+
+  dimensions = {
+    AutoScalingGroupName = "${aws_autoscaling_group.AutoScalingGroup.name}"
+  }
+
+  alarm_description = "This metric monitors ec2 low cpu utilization"
+  alarm_actions     = ["${aws_autoscaling_policy.AutoScalingDecrementPolicy.arn}"]
 }
 
 resource "aws_autoscaling_group" "AutoScalingGroup" {
