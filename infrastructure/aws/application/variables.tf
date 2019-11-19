@@ -37,3 +37,11 @@ variable "codedeployBucketName" {
 variable "lambdaBucketName" {
   default = "lambda.suhaspasricha.com"
 }
+
+variable "sslCertificateArn" {
+  default = "arn:aws:acm:us-east-1:467217763981:certificate/f4931f15-d195-433f-9fd8-9fd8a16ec209"
+}
+
+variable "domainName" {
+  default = "dev.suhaspasricha.com"
+}

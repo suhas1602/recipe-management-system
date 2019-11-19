@@ -254,6 +254,8 @@ echo "export DB_DATABASE_NAME=csye6225" >> .bashrc
 echo "export DB_HOST_NAME=${aws_db_instance.db_instance.address}" >> .bashrc
 echo "export DB_PORT=5432" >> .bashrc
 echo "export S3_BUCKET=${var.bucketName}" >> .bashrc
+echo "export AWS_REGION=${var.region}" >> .bashrc
+echo "export DOMAIN_NAME=${var.domainName}" >> .bashrc
 EOT
 
   lifecycle {
@@ -333,6 +335,57 @@ resource "aws_autoscaling_group" "AutoScalingGroup" {
 //   vpc      = true
 // }
 
+resource "aws_lb_target_group" "albTargetGroup" {
+  name     = "csye6225-target-group"
+  port     = 3000
+  protocol = "HTTP"
+  vpc_id   = var.vpcId
+}
+
+resource "aws_lb" "ApplicationLoadBalancer" {
+  name               = "csye6225-elb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = ["${aws_security_group.elbSc.id}"]
+  subnets            = var.subnetIds
+}
+
+resource "aws_autoscaling_attachment" "asg_attachment_elb" {
+  autoscaling_group_name = "${aws_autoscaling_group.AutoScalingGroup.id}"
+  alb_target_group_arn   = "${aws_lb_target_group.albTargetGroup.arn}"
+}
+
+resource "aws_lb_listener" "albListener" {
+  load_balancer_arn = "${aws_lb.ApplicationLoadBalancer.arn}"
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+  certificate_arn   = var.sslCertificateArn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = "${aws_lb_target_group.albTargetGroup.arn}"
+  }
+}
+
+data "aws_route53_zone" "Csye6225DomainName" {
+  name         = "${var.domainName}."
+  private_zone = false
+}
+
+resource "aws_route53_record" "Route53AliasRecord" {
+  zone_id = "${data.aws_route53_zone.Csye6225DomainName.zone_id}"
+  name    = var.domainName
+  type    = "A"
+
+  alias {
+    name                   = "${aws_lb.ApplicationLoadBalancer.dns_name}"
+    zone_id                = "${aws_lb.ApplicationLoadBalancer.zone_id}"
+    evaluate_target_health = true
+  }
+}
+
+
 resource "aws_security_group_rule" "app_only"{
   type = "ingress"
   from_port = 5432
@@ -347,30 +400,12 @@ resource "aws_security_group" "databaseSc"{
   vpc_id = var.vpcId
 }
 
-resource "aws_security_group" "applicationSc" {
-  name = "application_security_group"
+resource "aws_security_group" "elbSc" {
+  name = "elb_security_group"
   vpc_id = var.vpcId
-  ingress {
-    from_port = 22
-    to_port = 22
-    protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    from_port = 80
-    to_port = 80
-    protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
   ingress {
     from_port = 443
     to_port = 443
-    protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    from_port = 3000
-    to_port = 3000
     protocol = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -380,4 +415,18 @@ resource "aws_security_group" "applicationSc" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+}
+
+resource "aws_security_group_rule" "alb_only"{
+  type = "ingress"
+  from_port = 3000
+  to_port = 3000
+  protocol = "tcp"
+  security_group_id = "${aws_security_group.applicationSc.id}"
+  source_security_group_id = "${aws_security_group.elbSc.id}"
+}
+
+resource "aws_security_group" "applicationSc" {
+  name = "application_security_group"
+  vpc_id = var.vpcId
 }
