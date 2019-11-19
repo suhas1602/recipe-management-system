@@ -45,3 +45,7 @@ variable "sslCertificateArn" {
 variable "domainName" {
   default = "dev.suhaspasricha.com"
 }
+
+variable "lambdaRole" {
+  default = "arn:aws:iam::467217763981:role/csye6225-lambda-role"
+}

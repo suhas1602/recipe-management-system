@@ -147,11 +147,11 @@ const getRecipeNutritionInformation = async (id) => {
 const deleteRecipe = async (recipeId) => {
   await pool.query("DELETE FROM public.recipe_image WHERE recipe_id=$1", [recipeId]);
 
-  await pool.query("DELETE FROM public.nutrition_information WHERE recipe_id=$1", [id]);
+  await pool.query("DELETE FROM public.nutrition_information WHERE recipe_id=$1", [recipeId]);
 
-  await pool.query("DELETE FROM public.steps WHERE recipe_id=$1", [id]);
+  await pool.query("DELETE FROM public.steps WHERE recipe_id=$1", [recipeId]);
 
-  return await pool.query("DELETE FROM public.recipe WHERE id=$1", [id]);
+  return await pool.query("DELETE FROM public.recipe WHERE id=$1", [recipeId]);
 }
 
 const updateRecipe = async(updateRecipeInput, recipeId) => {

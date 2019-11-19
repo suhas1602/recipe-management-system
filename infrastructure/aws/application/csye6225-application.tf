@@ -162,22 +162,29 @@ resource "aws_codedeploy_app" "csye6225-webapp" {
   name = "csye6225-webapp"
 }
 
-resource "aws_codedeploy_deployment_group" "example" {
+resource "aws_codedeploy_deployment_group" "WebappDeploymentGroup" {
   app_name              = "${aws_codedeploy_app.csye6225-webapp.name}"
   deployment_group_name = "csye6225-webapp-deployment"
   service_role_arn      = "${aws_iam_role.CodeDeployServiceRole.arn}"
 
-  ec2_tag_set {
-    ec2_tag_filter {
-      key   = "Name"
-      type  = "KEY_AND_VALUE"
-      value = "Webserver"
-    }
-  }
+  // ec2_tag_set {
+  //   ec2_tag_filter {
+  //     key   = "Name"
+  //     type  = "KEY_AND_VALUE"
+  //     value = "Webserver"
+  //   }
+  // }
 
   auto_rollback_configuration {
     enabled = true
     events  = ["DEPLOYMENT_FAILURE"]
+  }
+
+  autoscaling_groups = ["${aws_autoscaling_group.AutoScalingGroup.name}"]
+  load_balancer_info {
+    target_group_info {
+      name = "${aws_lb_target_group.albTargetGroup.name}"
+    } 
   }
 }
 
@@ -188,7 +195,7 @@ resource "aws_sns_topic" "MyRecipesLambdaTopic" {
 resource "aws_lambda_function" "MyRecipesLambda" {
   filename      = "../csye6225-fa19-lambda.zip"
   function_name = "MyRecipesLinks"
-  role          = "arn:aws:iam::467217763981:role/csye6225-lambda-role"
+  role          = var.lambdaRole
   handler       = "index.handler"
 
   runtime = "nodejs10.x"
@@ -340,6 +347,17 @@ resource "aws_lb_target_group" "albTargetGroup" {
   port     = 3000
   protocol = "HTTP"
   vpc_id   = var.vpcId
+
+  health_check {
+                port = "3000"
+                protocol = "HTTP"
+                path = "/"
+                healthy_threshold = 2
+                unhealthy_threshold = 2
+                interval = 5
+                timeout = 4
+                matcher = "200"
+        }
 }
 
 resource "aws_lb" "ApplicationLoadBalancer" {
@@ -417,16 +435,25 @@ resource "aws_security_group" "elbSc" {
   }
 }
 
-resource "aws_security_group_rule" "alb_only"{
-  type = "ingress"
-  from_port = 3000
-  to_port = 3000
-  protocol = "tcp"
-  security_group_id = "${aws_security_group.applicationSc.id}"
-  source_security_group_id = "${aws_security_group.elbSc.id}"
-}
-
 resource "aws_security_group" "applicationSc" {
   name = "application_security_group"
   vpc_id = var.vpcId
+  ingress {
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port = 3000
+    to_port = 3000
+    protocol = "tcp"
+    security_groups = ["${aws_security_group.elbSc.id}"]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
