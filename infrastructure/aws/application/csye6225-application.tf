@@ -281,12 +281,12 @@ resource "aws_autoscaling_policy" "AutoScalingIncrementPolicy" {
 resource "aws_cloudwatch_metric_alarm" "HighUtilizationAlarm" {
   alarm_name          = "CPUAlarmHigh"
   comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = "2"
+  evaluation_periods  = "1"
   metric_name         = "CPUUtilization"
   namespace           = "AWS/EC2"
-  period              = "300"
+  period              = "60"
   statistic           = "Average"
-  threshold           = "90"
+  threshold           = "5"
 
   dimensions = {
     AutoScalingGroupName = "${aws_autoscaling_group.AutoScalingGroup.name}"
@@ -308,12 +308,12 @@ resource "aws_autoscaling_policy" "AutoScalingDecrementPolicy" {
 resource "aws_cloudwatch_metric_alarm" "LowUtilizationAlarm" {
   alarm_name          = "CPUAlarmLow"
   comparison_operator = "LessThanOrEqualToThreshold"
-  evaluation_periods  = "2"
+  evaluation_periods  = "1"
   metric_name         = "CPUUtilization"
   namespace           = "AWS/EC2"
-  period              = "300"
+  period              = "60"
   statistic           = "Average"
-  threshold           = "70"
+  threshold           = "3"
 
   dimensions = {
     AutoScalingGroupName = "${aws_autoscaling_group.AutoScalingGroup.name}"
@@ -456,4 +456,16 @@ resource "aws_security_group" "applicationSc" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+}
+
+data "aws_wafregional_web_acl" "csyeWaf" {
+  name = "ACL"
+}
+
+data "aws_alb" "csyeAlbData" {
+  name = "csye6225-elb"
+}
+resource "aws_wafregional_web_acl_association" "wafAlbAttachment" {
+  resource_arn = "${data.aws_alb.csyeAlbData.arn}"
+  web_acl_id   = "${data.aws_wafregional_web_acl.csyeWaf.id}"
 }

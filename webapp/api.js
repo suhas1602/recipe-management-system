@@ -281,7 +281,46 @@ const createRecipe = async (req, res) => {
 	}
 }
 
+const getLatestRecipe = async (req,res) => {
+	const { rows } = await db.getAllRecipes();
 
+	if(lodash.isEmpty(rows) || rows.length <=0 ) return res.sendStatus(404);
+
+	const latestRecipe = rows[0];
+
+	const {rows: recipeSteps} = await db.getRecipeSteps(latestRecipe.id);
+	const {rows: recipeNutritionInformaiton} = await db.getRecipeNutritionInformation(latestRecipe.id);
+	const {rows: imageDetails} = await db.getAllImagesForRecipe(latestRecipe.id);
+
+	res.status(200).send({
+		image: !lodash.isEmpty(imageDetails) && imageDetails.length > 0 ? {
+			id: imageDetails[imageDetails.length -1].id,
+			url: imageDetails[imageDetails.length -1].url,
+		} : null,
+		id: latestRecipe.id,
+		created_ts: latestRecipe.created_ts,
+		updated_ts: latestRecipe.updated_ts,
+		author_id: latestRecipe.author_id,
+		cook_time_in_min: latestRecipe.cook_time_in_min,
+		prep_time_in_min: latestRecipe.prep_time_in_min,
+		total_time_in_min: latestRecipe.total_time_in_min,
+		title: latestRecipe.title,
+		cusine: latestRecipe.cusine,
+		servings: latestRecipe.servings,
+		ingredients: latestRecipe.ingredients,
+		steps: recipeSteps.map(item => ({
+			position: item.position,
+			items: item.items
+		})),
+		nutrition_information: recipeNutritionInformaiton.map(item =>({
+			calories: item.calories,
+			cholestrol_in_mg: item.cholestrol_in_mg,
+			sodium_in_mg: item.sodium_in_mg,
+			carbohydrates_in_grams: item.carbohydrates_in_grams,
+			protein_in_grams: item.protein_in_grams
+		}))
+	});
+}
 
 const getRecipeDetails = async (req, res) => {
 	const id = req.params.id;
@@ -289,7 +328,7 @@ const getRecipeDetails = async (req, res) => {
     const {rows: recipeDetails} = await db.getRecipeDetails(id);
     const {rows: recipeSteps} = await db.getRecipeSteps(id);
 	const {rows: recipeNutritionInformaiton} = await db.getRecipeNutritionInformation(id);
-	const {rows: imageDetails} = await db.getAllImagesForRecipe(id)
+	const {rows: imageDetails} = await db.getAllImagesForRecipe(id);
 
     if(lodash.isEmpty(recipeDetails)) return res.sendStatus(404);
 
@@ -588,4 +627,5 @@ module.exports = {
 	deleteRecipeImage,
 	fetchMyRecipes,
 	logResponseTime,
+	getLatestRecipe,
 };

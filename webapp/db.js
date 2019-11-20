@@ -154,6 +154,10 @@ const deleteRecipe = async (recipeId) => {
   return await pool.query("DELETE FROM public.recipe WHERE id=$1", [recipeId]);
 }
 
+const getAllRecipes = async () => {
+  return pool.query("SELECT * FROM public.recipe ORDER BY created_ts DESC");
+}
+
 const updateRecipe = async(updateRecipeInput, recipeId) => {
 
   const res = await pool.query("UPDATE public.recipe SET  created_ts=$1, updated_ts=$2, author_id=$3, cook_time_in_min=$4, prep_time_in_min=$5, total_time_in_min=$6, title=$7, cusine=$8, servings=$9, ingredients=$10 WHERE id=$11" ,
@@ -247,4 +251,5 @@ module.exports = {
   createTableIfNotExists,
   getAllImagesForRecipe,
   getAllRecipesForUser,
+  getAllRecipes,
 }

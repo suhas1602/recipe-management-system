@@ -78,6 +78,7 @@ createTables().then(() => {
   app.put("/v1/user/self",api.updateUserDetails);
   
   app.post("/v1/recipe", api.createRecipe);
+  app.get("/v1/recipes", api.getLatestRecipe);
   app.get("/v1/recipe/:id", api.getRecipeDetails);
   app.delete("/v1/recipe/:id", api.deleteRecipe);
   app.put("/v1/recipe/:id", api.updateRecipe);
