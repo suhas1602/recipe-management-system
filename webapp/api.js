@@ -599,7 +599,7 @@ const fetchMyRecipes = async (req,res) => {
 
 	const params = {
 		Message: JSON.stringify(snsMessage),
-		TopicArn: "arn:aws:sns:us-east-1:467217763981:email_request"
+		TopicArn: process.env.SNS_TOPIC_ARN,
 	};
 	
 	const publishTextPromise = new AWS.SNS({apiVersion: "2010-03-31"}).publish(params).promise();
@@ -609,7 +609,8 @@ const fetchMyRecipes = async (req,res) => {
 		console.log("MessageID is " + data.MessageId);
 		return res.status(200).json("Request received");
 	}).catch((err) => {
-		console.error(err, err.stack);	
+		console.error(err, err.stack);
+		return res.status(500).json(err);	
 	});
 }
 

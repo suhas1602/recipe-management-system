@@ -263,6 +263,7 @@ echo "export DB_PORT=5432" >> .bashrc
 echo "export S3_BUCKET=${var.bucketName}" >> .bashrc
 echo "export AWS_REGION=${var.region}" >> .bashrc
 echo "export DOMAIN_NAME=${var.domainName}" >> .bashrc
+echo "export SNS_TOPIC_ARN=${aws_sns_topic.MyRecipesLambdaTopic.arn}" >> .bashrc
 EOT
 
   lifecycle {
