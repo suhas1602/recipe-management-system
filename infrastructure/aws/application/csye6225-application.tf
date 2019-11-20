@@ -69,6 +69,19 @@ resource "aws_s3_bucket" "Codedeploy_instance" {
   }
 }
 
+resource "aws_s3_bucket" "Lambda_instance" {
+  bucket = var.lambdaBucketName
+  acl = "private"
+  force_destroy = true
+    server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        sse_algorithm     = "aws:kms"
+      }
+    }
+  }
+}
+
 resource "aws_dynamodb_table" "app_dynamo_table"{
   name = "csye6225"
   hash_key = "Id"
@@ -77,6 +90,11 @@ resource "aws_dynamodb_table" "app_dynamo_table"{
   attribute {
     name = "Id"
     type = "S"
+  }
+
+  ttl {
+    attribute_name = "TimeToExist"
+    enabled        = true
   }
 
 }
@@ -126,6 +144,10 @@ resource "aws_iam_role_policy_attachment" "EC2RoleCloudWatchPolicyAttach" {
   role       = "${aws_iam_role.CodeDeployEC2ServiceRole.name}"
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 }
+resource "aws_iam_role_policy_attachment" "EC2RoleSNSPolicyAttach" {
+  role       = "${aws_iam_role.CodeDeployEC2ServiceRole.name}"
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSNSFullAccess"
+}
 resource "aws_iam_role_policy_attachment" "codedeploy-role-policy-attach" {
   role       = "${aws_iam_role.CodeDeployServiceRole.name}"
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
@@ -140,37 +162,96 @@ resource "aws_codedeploy_app" "csye6225-webapp" {
   name = "csye6225-webapp"
 }
 
-resource "aws_codedeploy_deployment_group" "example" {
+resource "aws_codedeploy_deployment_group" "WebappDeploymentGroup" {
   app_name              = "${aws_codedeploy_app.csye6225-webapp.name}"
   deployment_group_name = "csye6225-webapp-deployment"
   service_role_arn      = "${aws_iam_role.CodeDeployServiceRole.arn}"
 
-  ec2_tag_set {
-    ec2_tag_filter {
-      key   = "Name"
-      type  = "KEY_AND_VALUE"
-      value = "Webserver"
-    }
-  }
+  // ec2_tag_set {
+  //   ec2_tag_filter {
+  //     key   = "Name"
+  //     type  = "KEY_AND_VALUE"
+  //     value = "Webserver"
+  //   }
+  // }
 
   auto_rollback_configuration {
     enabled = true
     events  = ["DEPLOYMENT_FAILURE"]
   }
+
+  autoscaling_groups = ["${aws_autoscaling_group.AutoScalingGroup.name}"]
+  load_balancer_info {
+    target_group_info {
+      name = "${aws_lb_target_group.albTargetGroup.name}"
+    } 
+  }
 }
 
-resource "aws_instance" "instance" {
-  ami           = var.amiId
+resource "aws_sns_topic" "MyRecipesLambdaTopic" {
+  name = "email_request"
+}
+
+resource "aws_lambda_function" "MyRecipesLambda" {
+  filename      = "../csye6225-fa19-lambda.zip"
+  function_name = "MyRecipesLinks"
+  role          = var.lambdaRole
+  handler       = "index.handler"
+
+  runtime = "nodejs10.x"
+}
+
+resource "aws_sns_topic_subscription" "MyRecipesLambdaTrigger" {
+  topic_arn = "${aws_sns_topic.MyRecipesLambdaTopic.arn}"
+  protocol  = "lambda"
+  endpoint  = "${aws_lambda_function.MyRecipesLambda.arn}"
+}
+
+resource "aws_lambda_permission" "with_sns" {
+    statement_id = "AllowExecutionFromSNS"
+    action = "lambda:InvokeFunction"
+    function_name = "${aws_lambda_function.MyRecipesLambda.arn}"
+    principal = "sns.amazonaws.com"
+    source_arn = "${aws_sns_topic.MyRecipesLambdaTopic.arn}"
+}
+
+
+// resource "aws_instance" "instance" {
+//   ami           = var.amiId
+//   instance_type = "t2.micro"
+//   key_name = "${aws_key_pair.publicKey.key_name}"
+//   vpc_security_group_ids = ["${aws_security_group.applicationSc.id}"]
+//   disable_api_termination = false 
+//   root_block_device {
+//     volume_size = "20"
+//     volume_type = "gp2"
+//   }
+//   subnet_id = var.subnetIds[0]
+//   iam_instance_profile="${aws_iam_instance_profile.CodeDeployEC2ServiceProfile.name}"
+//   user_data = <<-EOT
+// #! /bin/bash
+// cd /home/centos
+// echo "export DB_USER=dbuser" >> .bashrc
+// echo "export DB_PASSWORD=suhabhi71" >> .bashrc
+// echo "export DB_DATABASE_NAME=csye6225" >> .bashrc
+// echo "export DB_HOST_NAME=${aws_db_instance.db_instance.address}" >> .bashrc
+// echo "export DB_PORT=5432" >> .bashrc
+// echo "export S3_BUCKET=${var.bucketName}" >> .bashrc
+// EOT
+//   tags = {
+//     Name = "Webserver"
+//   }
+//   depends_on = [aws_db_instance.db_instance]
+// }
+
+resource "aws_launch_configuration" "AutoScalingLaunchConfig" {
+  name_prefix   = "asg_launch_config-"
+  image_id      = var.amiId
   instance_type = "t2.micro"
   key_name = "${aws_key_pair.publicKey.key_name}"
-  vpc_security_group_ids = ["${aws_security_group.applicationSc.id}"]
-  disable_api_termination = false 
-  root_block_device {
-    volume_size = "20"
-    volume_type = "gp2"
-  }
-  subnet_id = var.subnetIds[0]
+  associate_public_ip_address = true
   iam_instance_profile="${aws_iam_instance_profile.CodeDeployEC2ServiceProfile.name}"
+  security_groups = ["${aws_security_group.applicationSc.id}"]
   user_data = <<-EOT
 #! /bin/bash
 cd /home/centos
@@ -180,17 +261,149 @@ echo "export DB_DATABASE_NAME=csye6225" >> .bashrc
 echo "export DB_HOST_NAME=${aws_db_instance.db_instance.address}" >> .bashrc
 echo "export DB_PORT=5432" >> .bashrc
 echo "export S3_BUCKET=${var.bucketName}" >> .bashrc
+echo "export AWS_REGION=${var.region}" >> .bashrc
+echo "export DOMAIN_NAME=${var.domainName}" >> .bashrc
+echo "export SNS_TOPIC_ARN=${aws_sns_topic.MyRecipesLambdaTopic.arn}" >> .bashrc
 EOT
-  tags = {
-    Name = "Webserver"
+
+  lifecycle {
+    create_before_destroy = true
   }
+}
+
+resource "aws_autoscaling_policy" "AutoScalingIncrementPolicy" {
+  name                   = "WebServerScaleUpPolicy"
+  scaling_adjustment     = 1
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 300
+  autoscaling_group_name = "${aws_autoscaling_group.AutoScalingGroup.name}"
+}
+
+resource "aws_cloudwatch_metric_alarm" "HighUtilizationAlarm" {
+  alarm_name          = "CPUAlarmHigh"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = "1"
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = "60"
+  statistic           = "Average"
+  threshold           = "5"
+
+  dimensions = {
+    AutoScalingGroupName = "${aws_autoscaling_group.AutoScalingGroup.name}"
+  }
+
+  alarm_description = "This metric monitors ec2 high cpu utilization"
+  alarm_actions     = ["${aws_autoscaling_policy.AutoScalingIncrementPolicy.arn}"]
+}
+
+
+resource "aws_autoscaling_policy" "AutoScalingDecrementPolicy" {
+  name                   = "WebServerScaleDownPolicy"
+  scaling_adjustment     = -1
+  adjustment_type        = "ChangeInCapacity"
+  cooldown               = 300
+  autoscaling_group_name = "${aws_autoscaling_group.AutoScalingGroup.name}"
+}
+
+resource "aws_cloudwatch_metric_alarm" "LowUtilizationAlarm" {
+  alarm_name          = "CPUAlarmLow"
+  comparison_operator = "LessThanOrEqualToThreshold"
+  evaluation_periods  = "1"
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = "60"
+  statistic           = "Average"
+  threshold           = "3"
+
+  dimensions = {
+    AutoScalingGroupName = "${aws_autoscaling_group.AutoScalingGroup.name}"
+  }
+
+  alarm_description = "This metric monitors ec2 low cpu utilization"
+  alarm_actions     = ["${aws_autoscaling_policy.AutoScalingDecrementPolicy.arn}"]
+}
+
+resource "aws_autoscaling_group" "AutoScalingGroup" {
+  max_size = 10
+  min_size = 3
+  launch_configuration = "${aws_launch_configuration.AutoScalingLaunchConfig.name}"
+  vpc_zone_identifier = var.subnetIds
+  tag {
+    key = "Name"
+    value = "Webserver"
+    propagate_at_launch = true
+  }
+
   depends_on = [aws_db_instance.db_instance]
 }
 
-resource "aws_eip" "lb" {
-  instance = "${aws_instance.instance.id}"
-  vpc      = true
+// resource "aws_eip" "lb" {
+//   instance = "${aws_instance.instance.id}"
+//   vpc      = true
+// }
+
+resource "aws_lb_target_group" "albTargetGroup" {
+  name     = "csye6225-target-group"
+  port     = 3000
+  protocol = "HTTP"
+  vpc_id   = var.vpcId
+
+  health_check {
+                port = "3000"
+                protocol = "HTTP"
+                path = "/"
+                healthy_threshold = 2
+                unhealthy_threshold = 2
+                interval = 5
+                timeout = 4
+                matcher = "200"
+        }
 }
+
+resource "aws_lb" "ApplicationLoadBalancer" {
+  name               = "csye6225-elb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = ["${aws_security_group.elbSc.id}"]
+  subnets            = var.subnetIds
+}
+
+resource "aws_autoscaling_attachment" "asg_attachment_elb" {
+  autoscaling_group_name = "${aws_autoscaling_group.AutoScalingGroup.id}"
+  alb_target_group_arn   = "${aws_lb_target_group.albTargetGroup.arn}"
+}
+
+resource "aws_lb_listener" "albListener" {
+  load_balancer_arn = "${aws_lb.ApplicationLoadBalancer.arn}"
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+  certificate_arn   = var.sslCertificateArn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = "${aws_lb_target_group.albTargetGroup.arn}"
+  }
+}
+
+data "aws_route53_zone" "Csye6225DomainName" {
+  name         = "${var.domainName}."
+  private_zone = false
+}
+
+resource "aws_route53_record" "Route53AliasRecord" {
+  zone_id = "${data.aws_route53_zone.Csye6225DomainName.zone_id}"
+  name    = var.domainName
+  type    = "A"
+
+  alias {
+    name                   = "${aws_lb.ApplicationLoadBalancer.dns_name}"
+    zone_id                = "${aws_lb.ApplicationLoadBalancer.zone_id}"
+    evaluate_target_health = true
+  }
+}
+
 
 resource "aws_security_group_rule" "app_only"{
   type = "ingress"
@@ -199,12 +412,28 @@ resource "aws_security_group_rule" "app_only"{
   protocol = "tcp"
   security_group_id = "${aws_security_group.databaseSc.id}"
   source_security_group_id = "${aws_security_group.applicationSc.id}"
-
 }
 
-resource"aws_security_group" "databaseSc"{
+resource "aws_security_group" "databaseSc"{
   name = "database_security_group"
   vpc_id = var.vpcId
+}
+
+resource "aws_security_group" "elbSc" {
+  name = "elb_security_group"
+  vpc_id = var.vpcId
+  ingress {
+    from_port = 443
+    to_port = 443
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 resource "aws_security_group" "applicationSc" {
@@ -217,22 +446,10 @@ resource "aws_security_group" "applicationSc" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
-    from_port = 80
-    to_port = 80
-    protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    from_port = 443
-    to_port = 443
-    protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
     from_port = 3000
     to_port = 3000
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    security_groups = ["${aws_security_group.elbSc.id}"]
   }
   egress {
     from_port   = 0
@@ -240,4 +457,16 @@ resource "aws_security_group" "applicationSc" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+}
+
+data "aws_wafregional_web_acl" "csyeWaf" {
+  name = "ACL"
+}
+
+data "aws_alb" "csyeAlbData" {
+  name = "csye6225-elb"
+}
+resource "aws_wafregional_web_acl_association" "wafAlbAttachment" {
+  resource_arn = "${data.aws_alb.csyeAlbData.arn}"
+  web_acl_id   = "${data.aws_wafregional_web_acl.csyeWaf.id}"
 }

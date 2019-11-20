@@ -11,6 +11,13 @@ const logger = winston.createLogger({
   ]
 });
 
+const AWS = require("aws-sdk")
+
+// const credentials = new AWS.SharedIniFileCredentials({profile: "default"});
+
+// AWS.config.credentials = credentials;
+AWS.config.update({region: process.env.AWS_REGION});
+
 
 const uuid = require("uuid");
 const bcrypt = require("bcrypt");
@@ -274,7 +281,46 @@ const createRecipe = async (req, res) => {
 	}
 }
 
+const getLatestRecipe = async (req,res) => {
+	const { rows } = await db.getAllRecipes();
 
+	if(lodash.isEmpty(rows) || rows.length <=0 ) return res.sendStatus(404);
+
+	const latestRecipe = rows[0];
+
+	const {rows: recipeSteps} = await db.getRecipeSteps(latestRecipe.id);
+	const {rows: recipeNutritionInformaiton} = await db.getRecipeNutritionInformation(latestRecipe.id);
+	const {rows: imageDetails} = await db.getAllImagesForRecipe(latestRecipe.id);
+
+	res.status(200).send({
+		image: !lodash.isEmpty(imageDetails) && imageDetails.length > 0 ? {
+			id: imageDetails[imageDetails.length -1].id,
+			url: imageDetails[imageDetails.length -1].url,
+		} : null,
+		id: latestRecipe.id,
+		created_ts: latestRecipe.created_ts,
+		updated_ts: latestRecipe.updated_ts,
+		author_id: latestRecipe.author_id,
+		cook_time_in_min: latestRecipe.cook_time_in_min,
+		prep_time_in_min: latestRecipe.prep_time_in_min,
+		total_time_in_min: latestRecipe.total_time_in_min,
+		title: latestRecipe.title,
+		cusine: latestRecipe.cusine,
+		servings: latestRecipe.servings,
+		ingredients: latestRecipe.ingredients,
+		steps: recipeSteps.map(item => ({
+			position: item.position,
+			items: item.items
+		})),
+		nutrition_information: recipeNutritionInformaiton.map(item =>({
+			calories: item.calories,
+			cholestrol_in_mg: item.cholestrol_in_mg,
+			sodium_in_mg: item.sodium_in_mg,
+			carbohydrates_in_grams: item.carbohydrates_in_grams,
+			protein_in_grams: item.protein_in_grams
+		}))
+	});
+}
 
 const getRecipeDetails = async (req, res) => {
 	const id = req.params.id;
@@ -282,7 +328,7 @@ const getRecipeDetails = async (req, res) => {
     const {rows: recipeDetails} = await db.getRecipeDetails(id);
     const {rows: recipeSteps} = await db.getRecipeSteps(id);
 	const {rows: recipeNutritionInformaiton} = await db.getRecipeNutritionInformation(id);
-	const {rows: imageDetails} = await db.getAllImagesForRecipe(id)
+	const {rows: imageDetails} = await db.getAllImagesForRecipe(id);
 
     if(lodash.isEmpty(recipeDetails)) return res.sendStatus(404);
 
@@ -427,11 +473,27 @@ const deleteRecipe = async (req, res) => {
 
 	const {rows: recipeDetails} = await db.getRecipeDetails(recipeId);
 
+	const {rows: imageDetails} = await db.getAllImagesForRecipe(recipeId)
+
 	if(lodash.isEmpty(recipeDetails)) return res.sendStatus(404);
 
 	if(user.id !== recipeDetails[0].author_id) return res.sendStatus(401);
 
-	await db.deleteRecipe(recipeId);
+	try {
+		await db.deleteRecipe(recipeId);
+
+		if(!lodash.isEmpty(imageDetails) && imageDetails.length > 0) {
+			await Promise.all(imageDetails.map(async ({ url }) => {
+				const urlPath = url.split("/");
+				const s3Key = urlPath[urlPath.length - 1];
+				await s3.deleteFile(s3Key);
+			}));
+		} 
+
+	} catch(err) {
+		console.log(err);
+		return res.sendStatus(500);
+	}
 
 	res.sendStatus(204);
 }
@@ -521,6 +583,37 @@ const deleteRecipeImage = async (req,res) => {
 	}
 }
 
+const fetchMyRecipes = async (req,res) => {
+	const email = res.locals.email;
+
+	const {rows: [user]} = await db.getUserDetails(email);
+
+	const {rows: recipeDetails} = await db.getAllRecipesForUser(user.id);	
+
+	if(lodash.isEmpty(recipeDetails)) return res.status(404).json("No recipes found for this user");
+
+	const snsMessage = {
+		user: email,
+		links: recipeDetails.map(({id}) => `https://${process.env.DOMAIN_NAME}/v1/recipe/${id}`),
+	};
+
+	const params = {
+		Message: JSON.stringify(snsMessage),
+		TopicArn: process.env.SNS_TOPIC_ARN,
+	};
+	
+	const publishTextPromise = new AWS.SNS({apiVersion: "2010-03-31"}).publish(params).promise();
+	
+	publishTextPromise.then((data) => {
+		console.log(`Message ${params.Message} sent to the topic ${params.TopicArn}`);
+		console.log("MessageID is " + data.MessageId);
+		return res.status(200).json("Request received");
+	}).catch((err) => {
+		console.error(err, err.stack);
+		return res.status(500).json(err);	
+	});
+}
+
 module.exports = {
 	authorizeMiddleware,
 	createUser,
@@ -533,5 +626,7 @@ module.exports = {
 	createImage,
 	getImage,
 	deleteRecipeImage,
+	fetchMyRecipes,
 	logResponseTime,
+	getLatestRecipe,
 };

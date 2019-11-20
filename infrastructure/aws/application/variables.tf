@@ -23,13 +23,29 @@ variable "bucketName" {
 }
 
 variable "subnetIds" {
-  default = ["subnet-01fbea79f4e99f507","subnet-0338f193a10c502a1","subnet-06a0850335cce24c0"]
+  default = ["subnet-01098b21238209ca8","subnet-09de0b7b8ebc6fb0e","subnet-0e298bc02e5dfdad9"]
 }
 
 variable "vpcId" {
-  default = "vpc-06f8d5289cd439275"
+  default = "vpc-051e27af679c7b395"
 }
 
 variable "codedeployBucketName" {
   default = "codedeploy.suhaspasricha.com"
+}
+
+variable "lambdaBucketName" {
+  default = "lambda.suhaspasricha.com"
+}
+
+variable "sslCertificateArn" {
+  default = "arn:aws:acm:us-east-1:467217763981:certificate/f4931f15-d195-433f-9fd8-9fd8a16ec209"
+}
+
+variable "domainName" {
+  default = "dev.suhaspasricha.com"
+}
+
+variable "lambdaRole" {
+  default = "arn:aws:iam::467217763981:role/csye6225-lambda-role"
 }
