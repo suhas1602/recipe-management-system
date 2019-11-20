@@ -463,10 +463,10 @@ data "aws_wafregional_web_acl" "csyeWaf" {
   name = "ACL"
 }
 
-data "aws_alb" "csyeAlbData" {
-  name = "csye6225-elb"
-}
+// data "aws_alb" "csyeAlbData" {
+//   name = "csye6225-elb"
+// }
 resource "aws_wafregional_web_acl_association" "wafAlbAttachment" {
-  resource_arn = "${data.aws_alb.csyeAlbData.arn}"
+  resource_arn = "${aws_lb.ApplicationLoadBalancer.arn}"
   web_acl_id   = "${data.aws_wafregional_web_acl.csyeWaf.id}"
 }
