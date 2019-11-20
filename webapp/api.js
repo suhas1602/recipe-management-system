@@ -473,7 +473,7 @@ const deleteRecipe = async (req, res) => {
 
 	const {rows: recipeDetails} = await db.getRecipeDetails(recipeId);
 
-	const {rows: imageDetails} = await db.getAllImagesForRecipe(id)
+	const {rows: imageDetails} = await db.getAllImagesForRecipe(recipeId)
 
 	if(lodash.isEmpty(recipeDetails)) return res.sendStatus(404);
 

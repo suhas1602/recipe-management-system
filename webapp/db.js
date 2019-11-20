@@ -151,7 +151,7 @@ const deleteRecipe = async (recipeId) => {
 
   await pool.query("DELETE FROM public.steps WHERE recipe_id=$1", [recipeId]);
 
-  return await pool.query("DELETE FROM public.recipe WHERE id=$1", [recipeId]);
+  return pool.query("DELETE FROM public.recipe WHERE id=$1", [recipeId]);
 }
 
 const getAllRecipes = async () => {
