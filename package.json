@@ -2,7 +2,7 @@
   "name": "ccwebapp",
   "version": "1.0.0",
   "description": "## Team Information",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -20,6 +20,7 @@
   "dependencies": {
     "aws-sdk": "^2.553.0",
     "bcrypt": "^3.0.6",
+    "cors": "^2.8.5",
     "dotenv": "^8.1.0",
     "express": "^4.17.1",
     "formidable": "^1.2.1",

@@ -1,12 +1,4 @@
-# CSYE 6225 - Fall 2019
-
-## Team Information
- 
-|      Name       |   NEU ID  |    Email Address         |
-
-| Abhishek kamble | 001400007 | kamble.a@husky.neu.edu   |
-| Suhas Pasricha  | 001434745 | pasricha.s@husky.neu.edu |
-
+This is the backend application for my Recipe Management System. 
 
 ## Technology Stack
  
@@ -17,7 +9,7 @@
 ## Build Instructions
  
  Steps:-
- 1. Navigate to ccwebapp/webapp
+ 1. Navigate to src/
  2. Run the command "node index.js" to start the server
 
 ## Deploy Instructions
@@ -29,7 +21,6 @@
  4. Ensure that node.js is installed on your machine. Run "npm install" from the root directory to install required node packages. 
 
 
-
 ## Running Tests
 
  1. Install Mocha globally by running "npm install -g mocha".
@@ -37,6 +28,11 @@
 
 ## CI/CD
 
-1. CircleCI build is handled by config.yml in .config directory
-2. CodeDeploy steps are defined in appspec.yml
+ 1. CircleCI build is handled by config.yml in .config directory
+ 2. CodeDeploy steps are defined in appspec.yml
+
+## Infrastructure as Code
+
+ 1. All infrastructure as code scripts can be found in infrastructure/aws folder.
+
 

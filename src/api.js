@@ -100,7 +100,7 @@ const createUser = async (request, response) => {
 
 	if(!checkEmail(email)) return response.status(400).json("Email does not meet criteria");
 
-	if(!checkPassword(password)) return response.status(400).json("Password does not meet criteria")
+	if(!checkPassword(password)) return response.status(400).json("Password must be 8 characters long with at least one uppercase, one lowercase, on digit and one special character");
 
 	const { rows } = await db.getAllEmail();
 	const allEmails = rows.map(item => item.email);
@@ -322,24 +322,23 @@ const getLatestRecipe = async (req,res) => {
 	});
 }
 
-const getRecipeDetails = async (req, res) => {
-	const id = req.params.id;
+const getUserRecipes = async (req,res) => {
+	const email = res.locals.email;
+	const { rows } = await db.getAllUserRecipes(email);
 
-    const {rows: recipeDetails} = await db.getRecipeDetails(id);
-    const {rows: recipeSteps} = await db.getRecipeSteps(id);
-	const {rows: recipeNutritionInformaiton} = await db.getRecipeNutritionInformation(id);
-	const {rows: imageDetails} = await db.getAllImagesForRecipe(id);
+	if(lodash.isEmpty(rows) || rows.length <=0 ) return res.sendStatus(404);
 
-    if(lodash.isEmpty(recipeDetails)) return res.sendStatus(404);
+	const userRecipes = await Promise.all(rows.map(async recipe => {
+		const {rows: recipeSteps} = await db.getRecipeSteps(recipe.id);
+		const {rows: recipeNutritionInformaiton} = await db.getRecipeNutritionInformation(recipe.id);
+		const {rows: imageDetails} = await db.getAllImagesForRecipe(recipe.id);
 
-    const recipe = recipeDetails[0];
-
-    res.status(200).send({
+		return({
 			image: !lodash.isEmpty(imageDetails) && imageDetails.length > 0 ? {
 				id: imageDetails[imageDetails.length -1].id,
 				url: imageDetails[imageDetails.length -1].url,
 			} : null,
-		    id: recipe.id,
+			id: recipe.id,
 			created_ts: recipe.created_ts,
 			updated_ts: recipe.updated_ts,
 			author_id: recipe.author_id,
@@ -361,7 +360,55 @@ const getRecipeDetails = async (req, res) => {
 				carbohydrates_in_grams: item.carbohydrates_in_grams,
 				protein_in_grams: item.protein_in_grams
 			}))
-	});
+		})
+	}));
+	return res.status(200).send(userRecipes);
+}
+
+const getRecipeDetails = async (req, res) => {
+	const id = req.params.id;
+
+	try {
+		const {rows: recipeDetails} = await db.getRecipeDetails(id);
+		const {rows: recipeSteps} = await db.getRecipeSteps(id);
+		const {rows: recipeNutritionInformaiton} = await db.getRecipeNutritionInformation(id);
+		const {rows: imageDetails} = await db.getAllImagesForRecipe(id);
+
+		if(lodash.isEmpty(recipeDetails)) return res.sendStatus(404);
+
+		const recipe = recipeDetails[0];
+
+		res.status(200).send({
+			image: !lodash.isEmpty(imageDetails) && imageDetails.length > 0 ? {
+				id: imageDetails[imageDetails.length -1].id,
+				url: imageDetails[imageDetails.length -1].url,
+			} : null,
+			id: recipe.id,
+			created_ts: recipe.created_ts,
+			updated_ts: recipe.updated_ts,
+			author_id: recipe.author_id,
+			cook_time_in_min: recipe.cook_time_in_min,
+			prep_time_in_min: recipe.prep_time_in_min,
+			total_time_in_min: recipe.total_time_in_min,
+			title: recipe.title,
+			cusine: recipe.cusine,
+			servings: recipe.servings,
+			ingredients: recipe.ingredients,
+			steps: recipeSteps.map(item => ({
+				position: item.position,
+				items: item.items
+			})),
+			nutrition_information: recipeNutritionInformaiton.map(item =>({
+				calories: item.calories,
+				cholestrol_in_mg: item.cholestrol_in_mg,
+				sodium_in_mg: item.sodium_in_mg,
+				carbohydrates_in_grams: item.carbohydrates_in_grams,
+				protein_in_grams: item.protein_in_grams
+			}))
+		});
+	} catch (err) {
+		return res.sendStatus(404);
+	}
 }
 
 const updateRecipe = async (req, res) => {
@@ -629,4 +676,5 @@ module.exports = {
 	fetchMyRecipes,
 	logResponseTime,
 	getLatestRecipe,
+	getUserRecipes,
 };

@@ -17,6 +17,7 @@ const logger = winston.createLogger({
 const express = require("express");
 const bodyParser = require("body-parser");
 const app = express();
+const cors = require("cors");
 const port = 3000;
 
 const api = require("./api");
@@ -56,9 +57,10 @@ createTables().then(() => {
     message: 'Table creation step successful'
   });
 
+  app.use(cors());
+
   app.use(unless([
     {path: '/v1/user', method: 'POST'}, 
-    {path: '/v1/recipe', method: 'GET'}
   ], api.authorizeMiddleware));
   
   app.use(bodyParser.json());
@@ -78,11 +80,10 @@ createTables().then(() => {
   app.put("/v1/user/self",api.updateUserDetails);
   
   app.post("/v1/recipe", api.createRecipe);
-  app.get("/v1/recipes", api.getLatestRecipe);
   app.get("/v1/recipe/:id", api.getRecipeDetails);
   app.delete("/v1/recipe/:id", api.deleteRecipe);
   app.put("/v1/recipe/:id", api.updateRecipe);
-  app.post("/v1/myrecipes", api.fetchMyRecipes);
+  app.get("/v1/recipes", api.getUserRecipes);
   
   app.post("/v1/recipe/:id/image", api.createImage);
   app.get("/v1/recipe/:recipeId/image/:imageId", api.getImage);
