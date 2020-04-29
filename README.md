@@ -1,4 +1,4 @@
-This is the backend application for my Recipe Management System. 
+This is the backend application for my Recipe Management System. The frontend repository can be found here https://github.com/suhas1602/recipe-management-system-frontend.
 
 ## Technology Stack
  
