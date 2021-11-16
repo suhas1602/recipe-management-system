@@ -18,7 +18,7 @@
   },
   "homepage": "https://github.com/suhas1602/ccwebapp#readme",
   "dependencies": {
-    "aws-sdk": "^2.553.0",
+    "aws-sdk": "^2.814.0",
     "bcrypt": "^3.0.6",
     "cors": "^2.8.5",
     "dotenv": "^8.1.0",
